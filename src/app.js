@@ -9,7 +9,10 @@ export const bootstrap = (app) => {
     // --- Global Middlewares ---
     app.use(express.json());
     app.use(cookieParser());
-    app.use(cors());
+    app.use(cors({
+        origin: process.env.FRONTEND_URL,
+        credentials: true
+    }));
 
     // Log requests only in development
     if (process.env.NODE_ENV === 'development') {
