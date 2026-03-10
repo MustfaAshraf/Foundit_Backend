@@ -158,7 +158,7 @@ export const resetPasswordService = async (token, newPassword) => {
     // 2. Find User & Validate DB Token
     const user = await User.findOne({
         _id: decoded.id,
-        passwordResetToken: token,
+        passwordResetToken: encrypt(token),
         passwordResetExpires: { $gt: Date.now() } // Double check expiry
     });
 
