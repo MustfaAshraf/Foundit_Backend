@@ -148,15 +148,8 @@ export const TRANSACTION_TYPE = {
 // =========================================================
 
 export const REGEX = {
-    // Basic email regex
     EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    
-    // Min 8 chars, at least 1 letter and 1 number
-    PASSWORD: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/,
-    
-    // Valid MongoDB ObjectId
+    PASSWORD: /^(?=.*[A-Za-z])(?=.*\d)[\s\S]{8,}$/,
     OBJECT_ID: /^[0-9a-fA-F]{24}$/,
-    
-    // Phone number (Basic international)
     PHONE: /^\+?[1-9]\d{1,14}$/
 };
