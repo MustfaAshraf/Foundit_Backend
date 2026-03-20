@@ -69,3 +69,44 @@ export const createReport = asyncHandler(async (req, res, next) => {
         data: { report: newReport }
     });
 });
+
+
+
+
+
+export const getReports = asyncHandler(async (req, res, next) => {
+    // 1. Build query using ApiFeatures
+    const apiFeatures = new ApiFeatures(Report.find(), req.query)
+        .filter()
+        .sort()
+        .limitFields()
+        .paginate();
+
+    // 2. Execute Query
+    const reports = await apiFeatures.mongooseQuery.populate('user', 'name profileImage');
+
+    // 3. Count Total Docs for Pagination info
+    const totalQuery = new ApiFeatures(Report.find(), req.query).filter().mongooseQuery;
+    const total = await totalQuery.countDocuments();
+
+    // 4. Send Response
+    res.status(200).json({
+        status: 'success',
+        results: reports.length,
+        total,
+        data: { reports }
+    });
+});
+
+export const getReportById = asyncHandler(async (req, res, next) => {
+    const report = await Report.findById(req.params.id).populate('user', 'name profileImage');
+
+    if (!report) {
+        return next(createNotFoundError('Report not found'));
+    }
+
+    res.status(200).json({
+        status: 'success',
+        data: { report }
+    });
+});
