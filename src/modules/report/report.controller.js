@@ -3,6 +3,8 @@ import { ApiFeatures } from '../../utils/apiFeatures.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../utils/appError.js';
 
+
+
 // Stubbing matchService for now
 const matchService = {
     findMatches: async (report) => {
@@ -65,63 +67,5 @@ export const createReport = asyncHandler(async (req, res, next) => {
     res.status(201).json({
         status: 'success',
         data: { report: newReport }
-    });
-});
-
-export const getReports = asyncHandler(async (req, res, next) => {
-    // 1. Build query using ApiFeatures
-    const apiFeatures = new ApiFeatures(Report.find(), req.query)
-        .filter()
-        .sort()
-        .limitFields()
-        .paginate();
-
-    // 2. Execute Query
-    const reports = await apiFeatures.mongooseQuery.populate('user', 'name profileImage');
-
-    // 3. Count Total Docs for Pagination info
-    const totalQuery = new ApiFeatures(Report.find(), req.query).filter().mongooseQuery;
-    const total = await totalQuery.countDocuments();
-
-    // 4. Send Response
-    res.status(200).json({
-        status: 'success',
-        results: reports.length,
-        total,
-        data: { reports }
-    });
-});
-
-export const getReportById = asyncHandler(async (req, res, next) => {
-    const report = await Report.findById(req.params.id).populate('user', 'name profileImage');
-
-    if (!report) {
-        return next(createNotFoundError('Report not found'));
-    }
-
-    res.status(200).json({
-        status: 'success',
-        data: { report }
-    });
-});
-
-export const deleteReport = asyncHandler(async (req, res, next) => {
-    const report = await Report.findById(req.params.id);
-
-    if (!report) {
-        return next(createNotFoundError('Report not found'));
-    }
-
-    // Verify Ownership (User is from `protect` middleware)
-    if (report.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-        return next(createForbiddenError('You do not have permission to delete this report.'));
-    }
-
-    // Delete
-    await report.deleteOne();
-
-    res.status(204).json({
-        status: 'success',
-        data: null
     });
 });
