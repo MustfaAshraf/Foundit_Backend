@@ -112,3 +112,27 @@ export const getReportById = asyncHandler(async (req, res, next) => {
 });
 
 //test fix
+
+
+
+
+export const deleteReport = asyncHandler(async (req, res, next) => {
+    const report = await Report.findById(req.params.id);
+
+    if (!report) {
+        return next(createNotFoundError('Report not found'));
+    }
+
+    // Verify Ownership (User is from `protect` middleware)
+    if (report.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+        return next(createForbiddenError('You do not have permission to delete this report.'));
+    }
+
+    // Delete
+    await report.deleteOne();
+
+    res.status(204).json({
+        status: 'success',
+        data: null
+    });
+});
