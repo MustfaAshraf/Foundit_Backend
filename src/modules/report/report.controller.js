@@ -35,7 +35,7 @@ export const createReport = asyncHandler(async (req, res, next) => {
                 parsedLocation = { type: 'Point', coordinates: [locObj.lng, locObj.lat] };
             } else if (Array.isArray(locObj)) {
                 // If the user sends [lng, lat] directly
-                parsedLocation = { type: 'Point', coordinates: locObj }; 
+                parsedLocation = { type: 'Point', coordinates: locObj };
             } else {
                 return next(createBadRequestError('Invalid location format. Must provide lng and lat.'));
             }
@@ -110,3 +110,5 @@ export const getReportById = asyncHandler(async (req, res, next) => {
         data: { report }
     });
 });
+
+//test fix
