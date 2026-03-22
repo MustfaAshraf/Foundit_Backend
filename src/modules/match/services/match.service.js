@@ -1,13 +1,12 @@
 import { Report } from '../../../DB/models/report.model.js';
 import { Match } from './../../../DB/models/match.model.js';
-import { createBadRequestError, createNotFoundError } from './../../../utils/appError.js';
+import { createBadRequestError, createForbiddenError, createNotFoundError } from './../../../utils/appError.js';
 
 
 
 // ==========================
 // 1. Add Match 
 // ==========================
-
 export const findMatches=async(reportId)=>{
     console.log("report id in services:",reportId);
     
@@ -51,6 +50,8 @@ export const findMatches=async(reportId)=>{
 
         // Create Match if score >= 60%
         if (score >= 60) {
+            const lostId = report.type === 'LOST' ? reportId : candidate._id;
+            const foundId = report.type === 'FOUND' ? reportId : candidate._id;
             const match = await Match.findOneAndUpdate(
                 {
                     $or: [
@@ -59,8 +60,8 @@ export const findMatches=async(reportId)=>{
                     ]
                 },
                 {
-                    lostReport: report.type === 'LOST' ? reportId : candidate._id,
-                    foundReport: report.type === 'FOUND' ? reportId : candidate._id,
+                    lostReport: {report:lostId,isAccepted:false},
+                    foundReport:{report:foundId,isAccepted:false},
                     score,
                     status: 'PROPOSED'
                 },
@@ -76,7 +77,47 @@ export const findMatches=async(reportId)=>{
 };
 
 
+// ==========================
+// 2. Accept Match
+// ==========================
+export const acceptMatch = async(matchId,userId)=>{
+    console.log("accept Match function");
+    
+    const match = await Match.findById(matchId).populate([
+    {
+        path: 'lostReport.report',
+        model: 'Report' 
+    },
+    {
+        path: 'foundReport.report',
+        model: 'Report'
+    }
+]);
+    if(!match) throw createNotFoundError(`This Match not found`);
+    console.log("foundUser");
+    
+    console.log(match.foundReport);
+    const foundReportOwnerId = match.foundReport?.report?.user;
+const lostReportOwnerId = match.lostReport?.report?.user;
+const isFoundUser = foundReportOwnerId?.toString() === userId.toString();
+const isLostUser = lostReportOwnerId?.toString() === userId.toString();
 
+console.log(`Lost Owner: ${isLostUser}, Found Owner: ${isFoundUser}, Current User: ${userId}`);    
+if(!isFoundUser && !isLostUser) throw createBadRequestError('You are not a party to this match.')
+    if(isFoundUser){
+        match.foundReport.isAccepted=true
+        match.foundReport.acceptedAt =new Date()
+    }else{
+        match.lostReport.isAccepted=true
+        match.lostReport.acceptedAt =new Date()
+    }
+    if(match.lostReport.isAccepted && match.foundReport.isAccepted){
+        match.status='ACCEPTED'
+    console.log("Match fully ACCEPTED by both parties!");}
+    await match.save()
+    return match;
+
+}
 
 // ==========================
 // 4. Reject Match
