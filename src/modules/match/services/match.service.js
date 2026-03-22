@@ -130,13 +130,26 @@ export const acceptMatch = async (matchId, userId) => {
 };
 
 // ==========================
-// 4. Reject Match
+// 3. Reject Match
 // ==========================
 
-// ==========================
-// 4. Get All User Matches
-// ==========================
+export const rejectMatch = async (matchId, userId) => {
+    const match = await Match.findById(matchId).populate([
+        { path: 'lostReport.report', model: 'Report' },
+        { path: 'foundReport.report', model: 'Report' }
+    ]);
 
-// ==========================
-// 5. Get Match Report
-// ==========================
+    if (!match) throw createNotFoundError(`Match not found`);
+    const isLostOwner = match.lostReport?.report?.user?.toString() === userId.toString();
+    const isFoundOwner = match.foundReport?.report?.user?.toString() === userId.toString();
+
+    if (!isLostOwner && !isFoundOwner) {
+        throw createForbiddenError('You are not authorized to reject this match.');
+    }
+
+    match.status = 'REJECTED';
+    
+    await match.save();
+
+    return match;
+};

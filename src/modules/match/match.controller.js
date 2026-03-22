@@ -32,15 +32,36 @@ export const acceptMatch = asyncHandler(async (req, res) => {
     console.log("in accept match match");
     
     const { matchId } = req.params;
-     console.log(`matchId: ${matchId}`);
+    console.log(`matchId: ${matchId}`);
     const userId = req.user._id; 
     console.log(`matchId: ${matchId}, userId: ${userId}`);
     
     const updatedMatch = await matchService.acceptMatch(matchId, userId);
     
     const message = updatedMatch.status === 'ACCEPTED' 
-        ? "Match confirmed! You can now start chatting." 
-        : "You have accepted the match. Waiting for the other party.";
-
+    ? "Match confirmed! You can now start chatting." 
+    : "You have accepted the match. Waiting for the other party.";
+    
     sendSuccessResponse(res, { message, match: updatedMatch }, HTTP_STATUS.OK);
+});
+
+
+// @desc     Reject Match
+// @route    Patch /match/reject/:matchId
+// @access   Private
+
+// ==========================
+// 3. Reject Match
+// ==========================
+
+export const rejectMatch = asyncHandler(async (req, res) => {
+    const { matchId } = req.params;
+    const userId = req.user._id; 
+    console.log(`matchId: ${matchId}, userId: ${userId}`);
+    
+    const updatedMatch = await matchService.rejectMatch(matchId, userId);
+    console.log(`update Match: ${updatedMatch}`);
+
+    sendSuccessResponse(res, { match: updatedMatch} , HTTP_STATUS.OK);
+
 });

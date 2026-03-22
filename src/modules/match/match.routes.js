@@ -16,4 +16,10 @@ router.patch(
     matchController.acceptMatch
 );
 
+router.patch(
+    '/reject/:matchId', restrictTo('user'),
+    matchController.rejectMatch
+);
+
+
 export default router;
