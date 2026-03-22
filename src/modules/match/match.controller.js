@@ -45,11 +45,9 @@ export const acceptMatch = asyncHandler(async (req, res) => {
     sendSuccessResponse(res, { message, match: updatedMatch }, HTTP_STATUS.OK);
 });
 
-
 // @desc     Reject Match
 // @route    Patch /match/reject/:matchId
 // @access   Private
-
 // ==========================
 // 3. Reject Match
 // ==========================
@@ -61,7 +59,26 @@ export const rejectMatch = asyncHandler(async (req, res) => {
     
     const updatedMatch = await matchService.rejectMatch(matchId, userId);
     console.log(`update Match: ${updatedMatch}`);
-
+    
     sendSuccessResponse(res, { match: updatedMatch} , HTTP_STATUS.OK);
+    
+});
+
+
+// @desc     Get user Match
+// @route    Patch /match/my-matches
+// @access   Private
+// ==========================
+// 5. Get user Matches 
+// ==========================
+
+export const getUserMatches = asyncHandler(async (req, res, next) => {
+    const userId = req.user._id;
+
+    const matches = await matchService.getUserMatches(userId);
+
+    sendSuccessResponse(res, { match: matches} , HTTP_STATUS.OK);
 
 });
+
+

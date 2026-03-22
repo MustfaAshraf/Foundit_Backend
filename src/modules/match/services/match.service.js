@@ -153,3 +153,24 @@ export const rejectMatch = async (matchId, userId) => {
 
     return match;
 };
+
+// ==========================
+// 4. Get All User Matches
+// ==========================
+
+export const getAllMatches = async (filters = {}) => {
+    const matches = await Match.find(filters).populate([{ 
+                path: 'lostReport.report', 
+                model: 'Report',
+                populate: { path: 'user', select: 'name email phone' } 
+            },
+            { 
+                path: 'foundReport.report', 
+                model: 'Report',
+                populate: { path: 'user', select: 'name email phone' }
+            }
+        ])
+        .sort({ createdAt: -1 });
+
+    return matches;
+};

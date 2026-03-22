@@ -21,5 +21,7 @@ router.patch(
     matchController.rejectMatch
 );
 
+router.get('/my-matches',restrictTo('user'), matchController.getUserMatches);
+
 
 export default router;
