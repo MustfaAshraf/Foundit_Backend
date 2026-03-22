@@ -1,13 +1,19 @@
 import { Router } from 'express';
 import * as matchController from './match.controller.js';
+import { protect, restrictTo } from './../../middlewares/auth.middleware.js';
 
 const router = Router();
-
+// 1. Apply Authentication to ALL match routes
+router.use(protect);
 // Public Routes
-router.get(
+router.post(
     '/:reportId', 
     matchController.findMatches
 );
 
+router.patch(
+    '/accept/:matchId', restrictTo('user'),
+    matchController.acceptMatch
+);
 
 export default router;
