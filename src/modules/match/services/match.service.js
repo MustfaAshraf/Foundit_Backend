@@ -174,3 +174,27 @@ export const getAllMatches = async (filters = {}) => {
 
     return matches;
 };
+
+// ==========================
+// 5. Get user Matches 
+// ==========================
+export const getUserMatches = async (userId) => {
+    const matches = await Match.find().populate([
+        { 
+            path: 'lostReport.report', 
+            model: 'Report'
+        },
+        { 
+            path: 'foundReport.report', 
+            model: 'Report'
+        }
+    ]);
+
+    const userMatches = matches.filter(match => {
+        const isLostOwner = match.lostReport.report.user.toString() === userId.toString();
+        const isFoundOwner = match.foundReport.report.user.toString() === userId.toString();
+        return isLostOwner || isFoundOwner;
+    });
+
+    return userMatches;
+};

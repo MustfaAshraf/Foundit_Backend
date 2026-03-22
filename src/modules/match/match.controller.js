@@ -74,11 +74,29 @@ export const rejectMatch = asyncHandler(async (req, res) => {
 
 export const getUserMatches = asyncHandler(async (req, res, next) => {
     const userId = req.user._id;
-
+    
     const matches = await matchService.getUserMatches(userId);
-
+    
     sendSuccessResponse(res, { match: matches} , HTTP_STATUS.OK);
-
+    
 });
 
+// @desc     Get All Matches
+// @route    Patch /match/admin/all
+// @access   Private
+// ==========================
+// 5. Get user Matches 
+// ==========================
 
+
+export const getAllMatches = asyncHandler(async (req, res) => {
+    const filters = {};
+    if (req.query.status) filters.status = req.query.status;
+    const matches = await matchService.getAllMatches(filters);
+
+    res.status(200).json({
+        status: 'success',
+        results: matches.length,
+        data: { matches }
+    });
+});
