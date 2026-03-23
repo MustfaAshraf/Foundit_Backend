@@ -10,14 +10,14 @@ router.route('/')
         protect,
         uploadMultiple('images', 5),
         reportController.createReport
-    );
-    // .get(reportController.getReports);
+    )
+    .get(reportController.getReports);
 
-// router.route('/:id')
-//     .get(reportController.getReportById)
-//     .delete(
-//         protect,
-//         reportController.deleteReport
-//     );
+router.route('/:id')
+    .get(reportController.getReportById)
+    .delete(
+        protect,
+        reportController.deleteReport
+    );
 
 export default router;
