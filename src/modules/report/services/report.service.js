@@ -1,6 +1,7 @@
 import { Report } from '../../../DB/models/report.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
+import { uploadToCloudinary } from '../../../utils/cloudinary.js';
 
 // Stubbing matchService for now
 const matchService = {
@@ -13,10 +14,14 @@ const matchService = {
 export const createReportService = async (bodyData, files, userId) => {
     const { title, description, type, category, color, brand, tags, dateHappened, locationName, location } = bodyData;
 
-    // 1. Process Images (max 5)
+    // 1. Process Images to Cloudinary (max 5)
     let images = [];
     if (files && files.length > 0) {
-        images = files.map(file => file.path); // Saving local paths
+        // Upload all files to Cloudinary in parallel
+        const uploadPromises = files.map(file => uploadToCloudinary(file.path, 'reports'));
+        const uploadResults = await Promise.all(uploadPromises);
+        // Save the resulting secure URLs
+        images = uploadResults.map(result => result.url);
     }
 
     // 2. Parse GeoJSON Location
