@@ -1,41 +1,33 @@
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import * as reportService from './services/report.service.js';
+import { sendSuccessResponse } from '../../utils/appResponse.js';
 
 export const createReport = asyncHandler(async (req, res, next) => {
     const newReport = await reportService.createReportService(req.body, req.files, req.user._id);
 
-    res.status(201).json({
-        status: 'success',
-        data: { report: newReport }
-    });
+    return sendSuccessResponse(res, { report: newReport }, 201);
 });
 
 export const getReports = asyncHandler(async (req, res, next) => {
     // Pass req.query directly to the service
     const { reports, total } = await reportService.getReportsService(req.query);
 
-    res.status(200).json({
-        status: 'success',
+    return sendSuccessResponse(res, {
         results: reports.length,
         total,
-        data: { reports }
-    });
+        reports
+    }, 200);
 });
 
 export const getReportById = asyncHandler(async (req, res, next) => {
     const report = await reportService.getReportByIdService(req.params.id);
 
-    res.status(200).json({
-        status: 'success',
-        data: { report }
-    });
+    return sendSuccessResponse(res, { report }, 200);
 });
 
 export const deleteReport = asyncHandler(async (req, res, next) => {
     await reportService.deleteReportService(req.params.id, req.user);
 
-    res.status(204).json({
-        status: 'success',
-        data: null
-    });
+    // 204 No Content
+    return sendSuccessResponse(res, null, 204);
 });
