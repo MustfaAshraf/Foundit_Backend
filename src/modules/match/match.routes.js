@@ -25,7 +25,7 @@ router.get('/my-matches',restrictTo('user'), matchController.getUserMatches);
 
 router.get(
     '/admin/all', 
-   restrictTo('admin', 'community-admin'), 
+   restrictTo('super_admin', 'community-admin'), 
     matchController.getAllMatches
 );
 export default router;
