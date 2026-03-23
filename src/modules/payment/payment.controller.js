@@ -16,5 +16,13 @@ export const createCheckoutSession = asyncHandler(async (req, res, next) => {
 });
 
 export const webhookHandler = asyncHandler(async (req, res, next) => {
+    const signature = req.headers['stripe-signature'];
+
+    const rawBody = req.rawBody || req.body;
+
+    await handleWebhookService(rawBody, signature);
+
+    // Return 200 OK to Stripe
+    res.status(200).json({ received: true });
 
 });
