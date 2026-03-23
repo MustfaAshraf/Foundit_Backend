@@ -53,6 +53,6 @@ export const upload = multer({
 
 export const uploadSingle = (fileName) => upload.single(fileName)
 
-export const uploadMultiple = (fileName) => upload.array(fileName)
+export const uploadMultiple = (fileName, maxCount) => upload.array(fileName, maxCount)
 
 export const uploadMixed = (fileName) => upload.fields(fileName)

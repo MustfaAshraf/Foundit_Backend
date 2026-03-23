@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 
 // Use port from your config file logic
-const port = config.PORT; 
+const port = config.PORT;
 
 // 1. Connect to DB
 dbConnection();
