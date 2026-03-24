@@ -1,3 +1,6 @@
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
+import crypto from 'crypto';
 import { User } from '../../../DB/models/User.model.js';
 import {
     createConflictError,
@@ -12,7 +15,7 @@ import {
     generateResetToken,
     verifyToken
 } from '../../../utils/jwt.js';
-import { encrypt } from '../../../utils/encryption.js';
+import { encrypt, decrypt } from '../../../utils/encryption.js';
 import { hashPassword, comparePassword } from '../../../utils/passHandler.js';
 import { sendEmail } from '../../../utils/mailer.js';
 import { config } from '../../../config/env.js';
@@ -151,29 +154,105 @@ export const forgotPasswordService = async (email) => {
 // 6. RESET PASSWORD
 // ==========================
 export const resetPasswordService = async (token, newPassword) => {
-    // 1. Verify Token
+    // 1. Verify Token Signature
     const decoded = verifyToken(token);
     if (!decoded || !decoded.id) throw createBadRequestError('Invalid or expired token');
 
-    // 2. Find User & Validate DB Token
+    // 2. Find User by ID and verify the expiry time hasn't passed
     const user = await User.findOne({
         _id: decoded.id,
-        passwordResetToken: encrypt(token),
         passwordResetExpires: { $gt: Date.now() } // Double check expiry
     });
 
-    if (!user) throw createBadRequestError('Invalid or expired token');
+    if (!user || !user.passwordResetToken) {
+        throw createBadRequestError('Invalid or expired token');
+    }
 
-    // 3. Hash New Password & Save
+    // 3. DECRYPT the DB token and compare it to the incoming token
+    const decryptedDbToken = decrypt(user.passwordResetToken);
+
+    if (decryptedDbToken !== token) {
+        throw createBadRequestError('Token mismatch. Invalid request.');
+    }
+
+    // 4. Hash New Password & Save
     user.password = await hashPassword(newPassword);
+
+    // Clean up DB fields
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user.passwordChangedAt = Date.now();
 
-    // Optional: Log them out of all devices?
+    // Log them out of all devices (Force re-login with new password)
     user.refreshToken = [];
 
     await user.save();
 
     return { message: 'Password reset successfully. Please login.' };
+};
+
+
+// Initialize the Google Client with your ENV variable
+const googleClient = new OAuth2Client(config.GOOGLE.CLIENT_ID);
+
+// ==========================
+// 7. GOOGLE LOGIN/REGISTER
+// ==========================
+export const googleLoginService = async (googleAccessToken) => {
+    let googleUser;
+
+    try {
+        // 1. Fetch user profile from Google using the access_token
+        const response = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${googleAccessToken}` }
+        });
+        googleUser = response.data;
+    } catch (error) {
+        console.error("Google API Error:", error.response?.data || error.message);
+        throw createUnauthorizedError('Invalid Google Access Token');
+    }
+
+    // Extract data from Google's response
+    const { email, name, sub: googleId, picture } = googleUser;
+
+    // 2. Check if user already exists
+    let user = await User.findOne({ email }).select('+password');
+    let isNewUser = false;
+
+    // 3. Auto-Register if they don't exist
+    if (!user) {
+        const randomPasswordRaw = crypto.randomBytes(16).toString('hex');
+        const hashedPassword = await hashPassword(randomPasswordRaw);
+
+        user = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            isVerified: true, // Google already verified their email
+            socialProvider: 'google',
+            socialId: googleId,
+            avatar: { url: picture, publicId: null } // Matched your User Schema avatar format!
+        });
+
+        isNewUser = true;
+    }
+
+    // 4. Generate App Tokens
+    const accessToken = generateAccessToken({ id: user._id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user._id, role: user.role });
+
+    // 5. Save Refresh Token to DB
+    const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 Days
+    user.refreshToken.push({ token: refreshToken, expireAt });
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    const userObj = user.toObject();
+    userObj.isNewUser = isNewUser;
+
+    return {
+        user: userObj,
+        accessToken,
+        refreshToken
+    };
 };
