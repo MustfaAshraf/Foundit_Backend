@@ -3,9 +3,7 @@ import { createNotFoundError } from "../../../utils/appError.js";
 import cloudinary from "../../../config/cloudinary.js";
 
 export const getMeService = async (userId) => {
-    const user = await User.findById(userId)
-        .select("-refreshToken")
-        .populate("community");
+    const user = await User.findById(userId).select("-refreshToken");
 
     if (!user) {
         throw createNotFoundError("User not found");
@@ -33,7 +31,8 @@ export const updateMeService = async (userId, data) => {
     if (!user) {
         throw createNotFoundError("User not found");
     }
-
+    user.refreshToken = undefined;
+    user.password = undefined;
     return user;
 };
 
