@@ -2,14 +2,17 @@ import { Report } from '../../../DB/models/report.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
 import { uploadToCloudinary } from '../../../utils/cloudinary.js';
+import * as matchController from "../../match/match.controller.js" 
+import * as matchService from "../../match/services/match.service.js" 
+
 
 // Stubbing matchService for now
-const matchService = {
-    findMatches: async (report) => {
-        console.log('Stub: Matching service invoked for report', report._id);
-        // Integrate real matching logic when the module is fully ready
-    }
-};
+// const matchService = {
+//     findMatches: async (report) => {
+//         console.log('Stub: Matching service invoked for report', report._id);
+//         // Integrate real matching logic when the module is fully ready
+//     }
+// };
 
 export const createReportService = async (bodyData, files, userId) => {
     const { title, description, type, category, color, brand, tags, dateHappened, locationName, location } = bodyData;
@@ -62,9 +65,14 @@ export const createReportService = async (bodyData, files, userId) => {
         images,
         user: userId
     });
-
-    // 4. Trigger Matching Algorithm Stub
-    await matchService.findMatches(newReport);
+    // used to run match in background
+    setImmediate(async () => {
+        try {
+            await matchService.findMatches(newReport._id);
+        } catch (err) {
+            console.error("Matching Error:", err.message);
+        }
+    });
 
     return newReport;
 };
@@ -112,4 +120,22 @@ export const deleteReportService = async (reportId, user) => {
     // Delete
     await report.deleteOne();
     return true;
+};
+
+
+
+
+// getUserReportsService
+export const getUserReportsService = async (userId, query) => {
+    const filter = { user: userId };
+    
+    const apiFeatures = new ApiFeatures(Report.find(filter), query)
+        .filter()
+        .sort()
+        .paginate();
+
+    const reports = await apiFeatures.mongooseQuery;
+    const total = await Report.countDocuments(filter);
+
+    return { reports, total };
 };
