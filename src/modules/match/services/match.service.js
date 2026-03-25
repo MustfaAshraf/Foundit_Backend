@@ -155,7 +155,7 @@ export const rejectMatch = async (matchId, userId) => {
 };
 
 // ==========================
-// 4. Get All User Matches
+// 4. Get All Matches
 // ==========================
 
 export const getAllMatches = async (filters = {}) => {
@@ -195,6 +195,7 @@ export const getUserMatches = async (userId) => {
         const isFoundOwner = match.foundReport.report.user.toString() === userId.toString();
         return isLostOwner || isFoundOwner;
     });
+    if(userMatches===0)  throw createNotFoundError('There is no any Matches');
 
     return userMatches;
 };

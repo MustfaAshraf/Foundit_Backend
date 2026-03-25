@@ -94,9 +94,6 @@ export const getAllMatches = asyncHandler(async (req, res) => {
     if (req.query.status) filters.status = req.query.status;
     const matches = await matchService.getAllMatches(filters);
 
-    res.status(200).json({
-        status: 'success',
-        results: matches.length,
-        data: { matches }
-    });
+    sendSuccessResponse(res, { match: matches} , HTTP_STATUS.OK);
+
 });
