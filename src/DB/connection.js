@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
-import { config } from '../config/env.js'; // Import your new config
+import { config } from '../config/env.js'; // Import youim
+import dns from 'dns';
+
+dns.setServers(["8.8.8.8", "1.1.1.1"])
 
 export const dbConnection = async () => {
     try {
