@@ -21,7 +21,13 @@ export const bootstrap = (app) => {
     }));
 
     // 3. Parsers
-    app.use(express.json());
+    app.use(express.json({
+        verify: (req, res, buf) => {
+            if (req.originalUrl.includes('/webhook')) {
+                req.rawBody = buf;
+            }
+        }
+    }));
     app.use(cookieParser());
 
     // 4. Data Sanitization (Prevent NoSQL Injection)
