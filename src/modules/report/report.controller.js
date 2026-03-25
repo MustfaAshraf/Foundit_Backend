@@ -31,3 +31,16 @@ export const deleteReport = asyncHandler(async (req, res, next) => {
     // 204 No Content
     return sendSuccessResponse(res, null, 204);
 });
+
+
+// getUserReportsService
+
+export const getUserReports = asyncHandler(async (req, res) => {
+    const userId = req.user._id; 
+    const reports = await reportService.getUserReportsService(userId, req.query);
+      return sendSuccessResponse(res, 
+        reports
+    , 200);
+
+
+});

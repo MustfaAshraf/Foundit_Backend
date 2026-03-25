@@ -28,6 +28,8 @@ export const generateResetToken = (payload) => {
 
 
 export const verifyToken = (token) => {
+    console.log(`in verify Token ${token}`);
+    
     try {
         return jwt.verify(token, config.JWT.SECRET);
     } catch (error) {

@@ -2,14 +2,14 @@ import mongoose from 'mongoose';
 
 const matchSchema = new mongoose.Schema({
     lostReport: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Report',
-        required: true
+        report: { type: mongoose.Schema.Types.ObjectId, ref: 'Report', required: true },
+        isAccepted: { type: Boolean, default: false },
+        acceptedAt: Date
     },
     foundReport: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Report',
-        required: true
+        report: { type: mongoose.Schema.Types.ObjectId, ref: 'Report', required: true },
+        isAccepted: { type: Boolean, default: false },
+        acceptedAt: Date
     },
 
     score: {
