@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
+import { createUnauthorizedError } from './appError.js';
 
 
 export const generateAccessToken = (payload) => {
