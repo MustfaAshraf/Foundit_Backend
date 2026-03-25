@@ -3,7 +3,7 @@ import { config } from '../config/env.js'; // Import your new config
 
 export const dbConnection = async () => {
     try {
-        await mongoose.connect('mongodb://127.0.0.1:27017/foundit'); // Uses the smart selection
+        await mongoose.connect(config.DB_MONGO_ATLAS); // Uses the smart selection
         console.log(`✅ Database Connected`);
     } catch (error) {
         console.error('❌ Database Connection Failed:', error);
