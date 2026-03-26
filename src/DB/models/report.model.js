@@ -20,6 +20,9 @@ const reportSchema = new mongoose.Schema({
         required: true,
         enum: ['Electronics', 'Wallets', 'Pets', 'Documents', 'Keys', 'Other']
     },
+    subCategory: {
+        type: String
+    },
     color: {
         type: String,
         lowercase: true
@@ -31,7 +34,15 @@ const reportSchema = new mongoose.Schema({
     tags: [{ type: String }], // ["iphone", "black", "pro"]
 
     // --- Location (GeoJSON) ---
-    locationName: String,
+    locationName: {
+        type: String,
+        required: true,
+        trim: true,
+        match: [
+            /^[\w\u0600-\u06FF\s]+,\s*[\w\u0600-\u06FF\s]+(,\s*[\w\u0600-\u06FF\s]+)*$/,
+            'Location must follow a standard format separated by commas (e.g., "City, District" or "City, District, Street")'
+        ]
+    },
     location: {
         type: {
             type: String,
@@ -48,7 +59,7 @@ const reportSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['OPEN', 'PENDING', 'MATCHED', 'RESOLVED'],
+        enum: ['OPEN', 'REJECTED', 'MATCHED', 'RESOLVED'],
         default: 'OPEN'
     },
     completionPercent: {
@@ -73,5 +84,27 @@ const reportSchema = new mongoose.Schema({
 // Indexes for Algorithm Performance
 reportSchema.index({ location: '2dsphere' }); // Geo-search
 reportSchema.index({ tags: 'text', description: 'text' }); // Text search
+
+// Keyword Auto-Extraction Middleware
+reportSchema.pre('save', function () {
+    try {
+        if (this.isModified('title') || this.isModified('description')) {
+            const textToProcess = `${this.title} ${this.description || ''}`.toLowerCase();
+            
+            const stopWords = ['the', 'and', 'with', 'from', 'that', 'this', 'for', 'are', 'was', 'were', 'found', 'lost', 'near', 'have', 'has', 'had', 'been', 'some', 'any', 'all', 'there', 'their', 'which', 'what', 'when', 'where', 'who', 'how', 'why', 'very', 'just'];
+            
+            // Match English AND Arabic words longer than 3 characters (4 or more letters)
+            const words = textToProcess.match(/[a-zA-Z\u0600-\u06FF]{4,}/g) || [];
+            
+            const uniqueKeywords = [...new Set(words)]
+                .filter(word => !stopWords.includes(word));
+                
+            // Modern, safe approach (no pushing loops)
+            this.tags = [...new Set([...(this.tags || []), ...uniqueKeywords])];
+        }
+    } catch (error) {
+        throw error;
+    }
+});
 
 export const Report = mongoose.model('Report', reportSchema);
