@@ -1,7 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
 import crypto from 'crypto';
-import { User } from '../../../DB/models/User.model.js';
+import { User } from '../../../DB/models/user.model.js';
 import {
     createConflictError,
     createUnauthorizedError,
