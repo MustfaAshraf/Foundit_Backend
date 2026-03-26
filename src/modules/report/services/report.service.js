@@ -15,7 +15,7 @@ import * as matchService from "../../match/services/match.service.js"
 // };
 
 export const createReportService = async (bodyData, files, userId) => {
-    const { title, description, type, category, color, brand, tags, dateHappened, locationName, location } = bodyData;
+    const { title, description, type, category, subCategory, color, brand, tags, dateHappened, locationName, location } = bodyData;
 
     // 1. Process Images to Cloudinary (max 5)
     let images = [];
@@ -51,20 +51,27 @@ export const createReportService = async (bodyData, files, userId) => {
     }
 
     // 3. Create Report in DB
-    const newReport = await Report.create({
-        title,
-        description,
-        type,
-        category,
-        color,
-        brand,
-        tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
-        dateHappened,
-        locationName,
-        location: parsedLocation,
-        images,
-        user: userId
-    });
+    let newReport;
+    try {
+        newReport = await Report.create({
+            title,
+            description,
+            type,
+            category,
+            subCategory,
+            color,
+            brand,
+            tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
+            dateHappened,
+            locationName,
+            location: parsedLocation,
+            images,
+            user: userId
+        });
+    } catch (dbError) {
+        throw createBadRequestError("DB Error: " + (dbError.message || 'Unknown Validation Error'));
+    }
+
     // used to run match in background
     setImmediate(async () => {
         try {
