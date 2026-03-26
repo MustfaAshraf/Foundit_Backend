@@ -3,16 +3,17 @@ import { User } from '../../../DB/models/user.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
 import { uploadToCloudinary } from '../../../utils/cloudinary.js';
+import * as matchController from "../../match/match.controller.js" 
 import * as matchService from "../../match/services/match.service.js" 
 
 
 // Stubbing matchService for now
-// const matchService = {
-//     findMatches: async (report) => {
-//         console.log('Stub: Matching service invoked for report', report._id);
-//         // Integrate real matching logic when the module is fully ready
-//     }
-// };
+const userService = {
+    refill: async () => {
+        console.log("Insufficient credits to create a report. Your monthly quota (3) has been reached. Please wait for a refresh or contact support.");
+    }
+};
+
 
 export const createReportService = async (bodyData, files, userId) => {
     const { title, description, type, category, subCategory, color, brand, tags, dateHappened, locationName, location } = bodyData;
@@ -21,18 +22,14 @@ export const createReportService = async (bodyData, files, userId) => {
     const user = await User.findById(userId);
     if (!user) throw createNotFoundError('User not found');
 
-    // Skip credit check for admins
-    const isAdmin = user.role === 'super_admin' || user.role === 'community_admin';
+    // Admin Exemption: Admins and community admins do not consume credits
+    const isAdmin = user.role === 'super_admin' || user.role === 'community_admin' || user.role === 'admin';
+    
+    // Robust Credit Check: Default to 3 for legacy/missing accounts, except admins
+    const currentCredits = (user.credits !== undefined && user.credits !== null) ? user.credits : 3;
 
-    if (!isAdmin) {
-        // Robust check: initialize credits if missing (for legacy users)
-        if (user.credits === undefined || user.credits === null) {
-            user.credits = 3; 
-        }
-
-        if (user.credits <= 0) {
-            throw createBadRequestError('Insufficient credits to create a report. Please wait for your monthly quota to refresh or upgrade your plan.');
-        }
+    if (!isAdmin && currentCredits <= 0) {
+        userService.refill();            
     }
 
     // 1. Process Images to Cloudinary (max 5)
@@ -93,13 +90,13 @@ export const createReportService = async (bodyData, files, userId) => {
             user: userId
         });
     } catch (dbError) {
-        console.error("Mongoose Error Detail:", dbError);
         throw createBadRequestError("DB Error: " + (dbError.message || 'Unknown Validation Error'));
     }
 
-    // 4. Actively Deduct Metric Quota Globally (Skip for admins)
+    // 4. Actively Deduct Metric Quota Globally (Only for regular users)
     if (!isAdmin) {
-        user.credits -= 1;
+        user.credits = currentCredits - 1;
+    
         await user.save();
     }
 
@@ -117,14 +114,14 @@ export const createReportService = async (bodyData, files, userId) => {
 
 export const getReportsService = async (query) => {
     // 1. Build query using ApiFeatures
-    const apiFeatures = new ApiFeatures(Report.find(), query)
+    const apiFeatures = new ApiFeatures(Report.find({ status: 'OPEN' }), query)
         .filter()
         .sort()
         .limitFields()
         .paginate();
 
     // 2. Execute Query
-    const reports = await apiFeatures.mongooseQuery.populate('user', 'name avatar');
+    const reports = await apiFeatures.mongooseQuery.populate('user', 'name profileImage');
 
     // 3. Count Total Docs for Pagination info
     const totalQuery = new ApiFeatures(Report.find(), query).filter().mongooseQuery;
@@ -134,7 +131,7 @@ export const getReportsService = async (query) => {
 };
 
 export const getReportByIdService = async (reportId) => {
-    const report = await Report.findById(reportId).populate('user', 'name avatar');
+    const report = await Report.findById(reportId).populate('user', 'name profileImage');
 
     if (!report) {
         throw createNotFoundError('Report not found');
@@ -151,7 +148,7 @@ export const deleteReportService = async (reportId, user) => {
     }
 
     // Verify Ownership (User is from `protect` middleware)
-    if (report.user.toString() !== user._id.toString() && user.role !== 'super_admin') {
+    if (report.user.toString() !== user._id.toString() && user.role !== 'admin') {
         throw createForbiddenError('You do not have permission to delete this report.');
     }
 
