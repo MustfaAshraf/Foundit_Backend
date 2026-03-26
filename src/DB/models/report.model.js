@@ -81,6 +81,18 @@ const reportSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// Location Format Sanitization BEFORE Regex Validation
+reportSchema.pre('validate', function () {
+    try {
+        if (this.isModified('locationName') && this.locationName) {
+            this.locationName = this.locationName.replace(/،/g, ',');
+        }
+    } catch (err) {
+        // Soft fail on formatter
+    }
+  
+});
+
 // Indexes for Algorithm Performance
 reportSchema.index({ location: '2dsphere' }); // Geo-search
 reportSchema.index({ tags: 'text', description: 'text' }); // Text search
@@ -88,18 +100,22 @@ reportSchema.index({ tags: 'text', description: 'text' }); // Text search
 // Keyword Auto-Extraction Middleware
 reportSchema.pre('save', function () {
     try {
-        if (this.isModified('title') || this.isModified('description')) {
-            const textToProcess = `${this.title} ${this.description || ''}`.toLowerCase();
+        if (this.isModified('title') || this.isModified('description') || this.isModified('brand') || this.isModified('color')) {
+            // Source Expansion & Normalization
+            let textToProcess = `${this.title} ${this.description || ''} ${this.brand || ''} ${this.color || ''}`.toLowerCase();
             
+            // Sanitization: Replace dashes, commas, and extra spaces with a single space
+            textToProcess = textToProcess.replace(/[-،,]/g, ' ').replace(/\s+/g, ' ');
+
             const stopWords = ['the', 'and', 'with', 'from', 'that', 'this', 'for', 'are', 'was', 'were', 'found', 'lost', 'near', 'have', 'has', 'had', 'been', 'some', 'any', 'all', 'there', 'their', 'which', 'what', 'when', 'where', 'who', 'how', 'why', 'very', 'just'];
             
-            // Match English AND Arabic words longer than 3 characters (4 or more letters)
-            const words = textToProcess.match(/[a-zA-Z\u0600-\u06FF]{4,}/g) || [];
+            // Extraction: Match English AND Arabic words >= 3 characters
+            const words = textToProcess.match(/[a-zA-Z\u0600-\u06FF]{3,}/g) || [];
             
             const uniqueKeywords = [...new Set(words)]
                 .filter(word => !stopWords.includes(word));
                 
-            // Modern, safe approach (no pushing loops)
+            // Silent Storage
             this.tags = [...new Set([...(this.tags || []), ...uniqueKeywords])];
         }
     } catch (error) {
