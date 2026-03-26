@@ -191,11 +191,11 @@ export const getUserMatches = async (userId) => {
     ]);
 
     const userMatches = matches.filter(match => {
-        const isLostOwner = match.lostReport.report.user.toString() === userId.toString();
-        const isFoundOwner = match.foundReport.report.user.toString() === userId.toString();
+        const isLostOwner = match.lostReport.report?.user.toString() === userId.toString();
+        const isFoundOwner = match.foundReport.report?.user.toString() === userId.toString();
         return isLostOwner || isFoundOwner;
     });
-    if(userMatches===0)  throw createNotFoundError('There is no any Matches');
+    if(userMatches.length ===0)  throw createNotFoundError('There is no any Matches');
 
     return userMatches;
 };
