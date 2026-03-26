@@ -5,6 +5,8 @@ import reportRouter from "../modules/report/report.routes.js"
 import userRouter from "../modules/user/user.routes.js"
 import paymentRouter from "../modules/payment/payment.routes.js"
 
+// import userRouter from "../modules/user/user.routes.js"
+import chatRouter from "../modules/chat/chat.routes.js"
 
 const routerHandler = async (app, express) => {
 
@@ -14,6 +16,8 @@ const routerHandler = async (app, express) => {
     app.use("/api/v1/reports", reportRouter)
     app.use("/api/v1/users", userRouter)
     app.use("/api/v1/payments", paymentRouter)
+    // app.use("/api/v1/users", userRouter)
+    app.use("/api/v1/chat", chatRouter)
 
     app.use("/{*any}", (req, res) => {
         res.status(404).json({ message: "this Router is not found" });
