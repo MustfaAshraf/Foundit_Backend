@@ -9,8 +9,8 @@ import * as matchService from "../../match/services/match.service.js"
 
 // Stubbing matchService for now
 const userService = {
-    refill: async () => {
-        console.log("Insufficient credits to create a report. Your monthly quota (3) has been reached. Please wait for a refresh or contact support.");
+    refill: () => {
+        throw createBadRequestError('Insufficient credits. Please refill your quota.');
     }
 };
 
