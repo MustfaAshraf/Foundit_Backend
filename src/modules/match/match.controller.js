@@ -97,3 +97,15 @@ export const getAllMatches = asyncHandler(async (req, res) => {
     sendSuccessResponse(res, { match: matches} , HTTP_STATUS.OK);
 
 });
+
+// @desc     Resolve Match explicitly converting statuses natively 
+// @route    Patch /match/resolve/:matchId
+// @access   Private
+export const resolveMatch = asyncHandler(async (req, res) => {
+    const { matchId } = req.params;
+    const userId = req.user._id; 
+    
+    const updatedMatch = await matchService.resolveMatch(matchId, userId);
+    
+    sendSuccessResponse(res, { match: updatedMatch, message: "Match successfully resolved! Items safely deactivated." } , HTTP_STATUS.OK);
+});
