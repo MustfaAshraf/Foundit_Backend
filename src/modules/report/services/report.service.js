@@ -1,8 +1,8 @@
 import { Report } from '../../../DB/models/report.model.js';
+import { User } from '../../../DB/models/user.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
 import { uploadToCloudinary } from '../../../utils/cloudinary.js';
-import * as matchController from "../../match/match.controller.js" 
 import * as matchService from "../../match/services/match.service.js" 
 
 
@@ -16,6 +16,24 @@ import * as matchService from "../../match/services/match.service.js"
 
 export const createReportService = async (bodyData, files, userId) => {
     const { title, description, type, category, subCategory, color, brand, tags, dateHappened, locationName, location } = bodyData;
+
+    // 0. Enforce Active Credit Quotas Dynamically Before Spending Backend Cloudinary Compute
+    const user = await User.findById(userId);
+    if (!user) throw createNotFoundError('User not found');
+
+    // Skip credit check for admins
+    const isAdmin = user.role === 'super_admin' || user.role === 'community_admin';
+
+    if (!isAdmin) {
+        // Robust check: initialize credits if missing (for legacy users)
+        if (user.credits === undefined || user.credits === null) {
+            user.credits = 3; 
+        }
+
+        if (user.credits <= 0) {
+            throw createBadRequestError('Insufficient credits to create a report. Please wait for your monthly quota to refresh or upgrade your plan.');
+        }
+    }
 
     // 1. Process Images to Cloudinary (max 5)
     let images = [];
@@ -32,21 +50,27 @@ export const createReportService = async (bodyData, files, userId) => {
     if (location) {
         try {
             const locObj = typeof location === 'string' ? JSON.parse(location) : location;
-            if (locObj.coordinates && Array.isArray(locObj.coordinates)) {
-                // If the user sends { coordinates: [lng, lat] }
+            if (locObj.type === "Point" && Array.isArray(locObj.coordinates)) {
+                // GeoJSON format
+                parsedLocation = locObj;
+            } else if (locObj.coordinates && Array.isArray(locObj.coordinates)) {
+                // Format: { coordinates: [lng, lat] }
                 parsedLocation = { type: 'Point', coordinates: locObj.coordinates };
-            } else if (locObj.lng && locObj.lat) {
-                // If the user sends { lng: X, lat: Y }
-                parsedLocation = { type: 'Point', coordinates: [locObj.lng, locObj.lat] };
-            } else if (Array.isArray(locObj)) {
-                // If the user sends [lng, lat] directly
-                parsedLocation = { type: 'Point', coordinates: locObj }; 
+            } else if (locObj.lng !== undefined && locObj.lat !== undefined) {
+                // Format: { lng: X, lat: Y }
+                parsedLocation = { type: 'Point', coordinates: [Number(locObj.lng), Number(locObj.lat)] };
+            } else if (locObj.lon !== undefined && locObj.lat !== undefined) {
+                // Format: { lon: X, lat: Y }
+                parsedLocation = { type: 'Point', coordinates: [Number(locObj.lon), Number(locObj.lat)] };
+            } else if (Array.isArray(locObj) && locObj.length === 2) {
+                // Format: [lng, lat]
+                parsedLocation = { type: 'Point', coordinates: [Number(locObj[0]), Number(locObj[1])] }; 
             } else {
-                throw createBadRequestError('Invalid location format. Must provide lng and lat.');
+                throw createBadRequestError('Invalid location format. Expecting [lng, lat], {lng, lat}, or GeoJSON object.');
             }
         } catch (error) {
-            if (error.statusCode) throw error; // Re-throw handled app errors
-            throw createBadRequestError('Invalid location JSON format');
+            if (error.statusCode) throw error; // Re-throw generic mapping errors
+            throw createBadRequestError('Invalid location JSON structure. Parsing failed.');
         }
     }
 
@@ -69,7 +93,14 @@ export const createReportService = async (bodyData, files, userId) => {
             user: userId
         });
     } catch (dbError) {
+        console.error("Mongoose Error Detail:", dbError);
         throw createBadRequestError("DB Error: " + (dbError.message || 'Unknown Validation Error'));
+    }
+
+    // 4. Actively Deduct Metric Quota Globally (Skip for admins)
+    if (!isAdmin) {
+        user.credits -= 1;
+        await user.save();
     }
 
     // used to run match in background
@@ -93,7 +124,7 @@ export const getReportsService = async (query) => {
         .paginate();
 
     // 2. Execute Query
-    const reports = await apiFeatures.mongooseQuery.populate('user', 'name profileImage');
+    const reports = await apiFeatures.mongooseQuery.populate('user', 'name avatar');
 
     // 3. Count Total Docs for Pagination info
     const totalQuery = new ApiFeatures(Report.find(), query).filter().mongooseQuery;
@@ -103,7 +134,7 @@ export const getReportsService = async (query) => {
 };
 
 export const getReportByIdService = async (reportId) => {
-    const report = await Report.findById(reportId).populate('user', 'name profileImage');
+    const report = await Report.findById(reportId).populate('user', 'name avatar');
 
     if (!report) {
         throw createNotFoundError('Report not found');
@@ -120,7 +151,7 @@ export const deleteReportService = async (reportId, user) => {
     }
 
     // Verify Ownership (User is from `protect` middleware)
-    if (report.user.toString() !== user._id.toString() && user.role !== 'admin') {
+    if (report.user.toString() !== user._id.toString() && user.role !== 'super_admin') {
         throw createForbiddenError('You do not have permission to delete this report.');
     }
 
