@@ -59,6 +59,14 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    otp: {
+        type: String, // We will store it encrypted/hashed
+        select: false
+    },
+    otpExpires: {
+        type: Date,
+        select: false
+    },
     socialProvider: {
         type: String,
         enum: ['google', 'facebook', 'email'],

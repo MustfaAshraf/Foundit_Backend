@@ -33,25 +33,38 @@ export const registerService = async (userData) => {
 
     const hashedPassword = await hashPassword(password);
 
+    // 1. Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 2. Encrypt OTP for DB storage
+    const encryptedOtp = encrypt(otpCode);
+
     const newUser = await User.create({
         name,
         email,
         password: hashedPassword,
-        isVerified: false
+        isVerified: false,
+        otp: encryptedOtp,
+        otpExpires: Date.now() + 10 * 60 * 1000 // OTP expires in 10 minutes
     });
 
-    const message = `<h1>Welcome to FoundIt!</h1><p>Your account has been created successfully.</p>`;
+    // 3. Send OTP Email
+    const message = `
+        <h2>Welcome to FoundIt!</h2>
+        <p>Your verification code is: <strong style="font-size: 24px; color: #1d63ed;">${otpCode}</strong></p>
+        <p>This code will expire in 10 minutes.</p>
+    `;
 
     await sendEmail({
         email,
-        subject: 'FoundIt - Registeration Successful',
+        subject: 'FoundIt - Verify Your Account',
         html: message
     });
 
     return {
         _id: newUser._id,
         email: newUser.email,
-        message: "Account created successfully."
+        message: "Account created successfully. Please check your email for the OTP."
     };
 };
 
@@ -59,30 +72,84 @@ export const registerService = async (userData) => {
 // 2. LOGIN
 // ==========================
 export const loginService = async ({ email, password }) => {
-    // 1. Find User
     const user = await User.findOne({ email }).select('+password');
     if (!user) throw createUnauthorizedError('Invalid email or password');
 
-    // 2. Check Password
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) throw createUnauthorizedError('Invalid email or password');
 
-    // 3. Generate Tokens
+    // 🛑 BLOCK UNVERIFIED USERS
+    if (!user.isVerified) {
+        // Send a specific error so the frontend knows to redirect to the OTP page
+        throw createForbiddenError('Please verify your email before logging in. We sent an OTP to your email.');
+    }
+
     const accessToken = generateAccessToken({ id: user._id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user._id, email: user.email, role: user.role });
 
-    // 4. Save Refresh Token to DB (Support Multi-Device)
-    const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 Days
+    const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     user.refreshToken.push({ token: refreshToken, expireAt });
     await user.save();
 
     user.password = undefined;
 
-    return {
-        user,
-        accessToken,
-        refreshToken
-    };
+    return { user, accessToken, refreshToken };
+};
+
+export const verifyOTPService = async (email, otpCode) => {
+    // 1. Find user & explicitly select the OTP fields
+    const user = await User.findOne({ email }).select('+otp +otpExpires');
+    if (!user) throw createNotFoundError('User not found');
+
+    if (user.isVerified) throw createBadRequestError('Account is already verified. Please login.');
+
+    // 2. Check Expiry
+    if (!user.otpExpires || user.otpExpires < Date.now()) {
+        throw createBadRequestError('OTP has expired. Please request a new one.');
+    }
+
+    // 3. Decrypt and compare
+    const decryptedOtp = decrypt(user.otp);
+    if (decryptedOtp !== otpCode) {
+        throw createBadRequestError('Invalid OTP code.');
+    }
+
+    // 4. Verification Success -> Update User
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    return { message: "Email verified successfully! You can now log in." };
+};
+
+export const resendOTPService = async (email) => {
+    const user = await User.findOne({ email });
+    if (!user) throw createNotFoundError('User not found');
+    if (user.isVerified) throw createBadRequestError('Account is already verified.');
+
+    // 1. Generate New OTP
+    const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // 2. Update DB
+    user.otp = encrypt(newOtpCode);
+    user.otpExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    // 3. Send Email
+    const message = `
+        <h2>FoundIt - New Verification Code</h2>
+        <p>Your new verification code is: <strong style="font-size: 24px; color: #1d63ed;">${newOtpCode}</strong></p>
+        <p>This code will expire in 10 minutes.</p>
+    `;
+
+    await sendEmail({
+        email,
+        subject: 'FoundIt - New OTP Code',
+        html: message
+    });
+
+    return { message: "A new OTP has been sent to your email." };
 };
 
 // ==========================
@@ -212,8 +279,13 @@ export const googleLoginService = async (googleAccessToken) => {
         throw createUnauthorizedError('Invalid Google Access Token');
     }
 
-    // Extract data from Google's response
-    const { email, name, sub: googleId, picture } = googleUser;
+    // Extract data from Google's response (Google also sends 'email_verified' boolean!)
+    const { email, name, sub: googleId, picture, email_verified } = googleUser;
+
+    // Security Check: Ensure Google actually verified this email
+    if (!email_verified) {
+        throw createUnauthorizedError('Your Google account email is not verified by Google.');
+    }
 
     // 2. Check if user already exists
     let user = await User.findOne({ email }).select('+password');
@@ -228,20 +300,32 @@ export const googleLoginService = async (googleAccessToken) => {
             name,
             email,
             password: hashedPassword,
-            isVerified: true, // Google already verified their email
+            isVerified: true, // 👈 THE FIX: Set to true automatically!
             socialProvider: 'google',
             socialId: googleId,
-            avatar: { url: picture, publicId: null } // Matched your User Schema avatar format!
+            avatar: { url: picture, publicId: null } 
         });
 
         isNewUser = true;
+    } 
+    // 4. EDGE CASE FIX: If they existed but were NOT verified, Google just verified them!
+    else if (!user.isVerified) {
+        user.isVerified = true; // 👈 Retroactively verify them
+        user.socialProvider = 'google'; // Upgrade their account to a Google account
+        user.socialId = googleId;
+        
+        // If they didn't have an avatar, give them the Google one
+        if (!user.avatar?.url) {
+            user.avatar = { url: picture, publicId: null };
+        }
+        await user.save();
     }
 
-    // 4. Generate App Tokens
+    // 5. Generate App Tokens
     const accessToken = generateAccessToken({ id: user._id, role: user.role });
     const refreshToken = generateRefreshToken({ id: user._id, role: user.role });
 
-    // 5. Save Refresh Token to DB
+    // 6. Save Refresh Token to DB
     const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 Days
     user.refreshToken.push({ token: refreshToken, expireAt });
     user.lastLoginAt = new Date();
