@@ -21,6 +21,19 @@ export const loginSchema = {
     }).required(),
 };
 
+export const verifyOtpSchema = {
+    body: joi.object({
+        email: joi.string().email().required(),
+        otp: joi.string().length(6).pattern(/^[0-9]+$/).required()
+    }).required()
+};
+
+export const resendOtpSchema = {
+    body: joi.object({
+        email: joi.string().email().required()
+    }).required()
+};
+
 export const forgotPasswordSchema = {
     body: joi.object({
         email: joi.string().email().required(),
