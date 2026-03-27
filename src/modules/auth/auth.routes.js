@@ -21,6 +21,18 @@ router.post(
     authController.login
 );
 
+router.post(
+    '/verify-otp', 
+    validate(authValidation.verifyOtpSchema), 
+    authController.verifyOTP
+);
+
+router.post(
+    '/resend-otp', 
+    validate(authValidation.resendOtpSchema), 
+    authController.resendOTP
+);
+
 router.get(
     '/refresh-token',
     // We validate that the cookie exists before calling controller

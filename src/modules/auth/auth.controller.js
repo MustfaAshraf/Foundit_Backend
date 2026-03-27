@@ -26,6 +26,18 @@ export const login = asyncHandler(async (req, res) => {
     sendSuccessResponse(res, { user, accessToken }, HTTP_STATUS.OK);
 });
 
+export const verifyOTP = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+    const result = await authService.verifyOTPService(email, otp);
+    sendSuccessResponse(res, result, HTTP_STATUS.OK);
+});
+
+export const resendOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const result = await authService.resendOTPService(email);
+    sendSuccessResponse(res, result, HTTP_STATUS.OK);
+});
+
 export const refreshAccessToken = asyncHandler(async (req, res) => {
     // 1. Extract token from Cookie
     const incomingRefreshToken = req.cookies?.refreshToken;
