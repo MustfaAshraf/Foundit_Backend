@@ -18,7 +18,7 @@ const reportSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ['Electronics', 'Wallets', 'Pets', 'Documents', 'Keys', 'Other']
+        enum: ['Electronics', 'Accessories']
     },
     subCategory: {
         type: String
