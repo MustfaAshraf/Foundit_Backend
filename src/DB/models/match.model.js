@@ -13,7 +13,8 @@ const matchSchema = new mongoose.Schema({
     },
     distance: {
         type: Number,
-        required: true
+        default: 0,
+        // required: true
     },
     score: {
         type: Number,

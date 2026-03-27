@@ -151,7 +151,7 @@ console.log(`Candidate ${candidate._id} Analysis:
           lostReport: { report: lostId, isAccepted: false },
           foundReport: { report: foundId, isAccepted: false },
           score: Math.round(score),
-          distance: Math.round(distanceMeters / 1000),
+          distance: Number((distanceMeters / 1000).toFixed(2)),
           status: "PROPOSED",
         },
         { upsert: true, new: true },
