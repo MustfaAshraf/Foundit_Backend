@@ -7,6 +7,7 @@ import {
   createForbiddenError
 } from "./../../../utils/appError.js";
 import { sendNotification } from '../../notification/services/notification.service.js';
+import { createConversationService } from "../../chat/services/chat.service.js";
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (coords1, coords2) => {
@@ -235,6 +236,16 @@ export const acceptMatch = async (matchId, userId) => {
   }
   if (match.lostReport.isAccepted && match.foundReport.isAccepted) {
     match.status = "ACCEPTED";
+
+    try {
+      const userA = match.lostReport.report.user;
+      const userB = match.foundReport.report.user;
+
+      await createConversationService(userA, userB);
+      console.log("Auto-chat created for accepted match!");
+    } catch (chatErr) {
+      console.error("Error creating auto-chat:", chatErr);
+    }
     console.log("Match fully ACCEPTED by both parties!");
   }
   await match.save();
