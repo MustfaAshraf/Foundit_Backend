@@ -8,6 +8,23 @@ import {
 } from "./../../../utils/appError.js";
 import { sendNotification } from '../../notification/services/notification.service.js';
 
+// Calculate distance between two points using Haversine formula
+const calculateDistance = (coords1, coords2) => {
+  const [lon1, lat1] = coords1;
+  const [lon2, lat2] = coords2;
+  const R = 6371e3; 
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; 
+};
 
 
 // ==========================
@@ -40,7 +57,11 @@ export const findMatches = async (reportId) => {
     status: "OPEN",
     location: {
       $near: {
-        $geometry: report.location,
+        // $geometry: report.location,
+        $geometry: {
+        type: "Point",
+        coordinates: report.location.coordinates
+      },
         $maxDistance: allowedDistance,
       },
     },
@@ -52,43 +73,68 @@ export const findMatches = async (reportId) => {
   // 3. Dynamic Weighted Scoring Matrix
   for (const candidate of canditates) {
     let score = 0;
+    //A. subCategory Match (15%)
+      score += 15;
+      
+    //B. Location (10%) 
+    // Mongoose $near explicitly filters out documents beyond 50km, meaning all loop candidates win 10pts.
+    // score += 10;
+    const distanceMeters = calculateDistance(report.location.coordinates, candidate.location.coordinates);
     
-    // Tag Overlap (40% Priority - Fuzzy logic normalized strings)
+    let locationScore = 0;
+    if (distanceMeters <= 5000) {       
+      locationScore = 25;
+    } else if (distanceMeters <= 20000) {   
+      locationScore = 18;
+    } else if (distanceMeters <= 30000) {   
+      locationScore = 10;
+    } else if (distanceMeters <= 40000) {                             
+      locationScore = 5;
+    }else{
+      locationScore = 2;
+    }
+    score += locationScore;
+
+console.log(`Candidate ${candidate._id} Analysis: 
+      Distance: ${Math.round(distanceMeters / 1000)}km, 
+      Calculated Score: ${Math.round(score)}%`);
+
+    //C. Tag Overlap (25% Priority - Fuzzy logic normalized strings)
     const normalize = (tag) => tag.toLowerCase().replace(/[-،,]/g, ' ').replace(/\s+/g, ' ').trim();
     const candidateTags = candidate.tags.map(normalize);
     const reportTags = report.tags.map(normalize);
     
     if (reportTags.length > 0) {
       const commonTags = reportTags.filter((tag) => candidateTags.includes(tag));
-      score += (commonTags.length / reportTags.length) * 40;
+      score += (commonTags.length / reportTags.length) * 25;
+      console.log("commonTags", commonTags, "reportTags", reportTags, "candidateTags", candidateTags, "score", score);
+      
     }
 
-    // Brand (25% Exact case-insensitive match)
+    //D. Brand (20% Exact case-insensitive match)
     if (candidate.brand && report.brand && candidate.brand.toLowerCase() === report.brand.toLowerCase()) {
-      score += 25;
+      score += 20;
+      console.log("brand", candidate.brand, "report.brand", report.brand, "score", score);
     }
 
-    // Date Proximity (15%)
+    //E. Date Proximity (10%)
     if (candidate.dateHappened && report.dateHappened) {
       const diffTime = Math.abs(candidate.dateHappened - report.dateHappened);
       const diffHours = diffTime / (1000 * 60 * 60);
       if (diffHours <= 24) {
-        score += 15;
+        score += 10;
+        console.log("dateHappened", candidate.dateHappened, "report.dateHappened", report.dateHappened, "score", score);
       } else if (diffHours <= 72) {
         score += 7;
+        console.log("dateHappened", candidate.dateHappened, "report.dateHappened", report.dateHappened, "score", score);
       }
     }
 
-    // Color (10%)
+    //F. Color (5%)
     if (candidate.color && report.color && candidate.color.toLowerCase() === report.color.toLowerCase()) {
-      score += 10;
+      score += 5;
+      console.log("color", candidate.color, "report.color", report.color, "score", score);
     }
-
-    // Location (10%) 
-    // Mongoose $near explicitly filters out documents beyond 50km, meaning all loop candidates win 10pts.
-    score += 10;
-
-    console.log(`Candidate ${candidate._id} - Target Score: ${Math.round(score)}%`);
 
     // Create Match specifically at Threshold >= 60%
     if (score >= 60) {
@@ -105,6 +151,7 @@ export const findMatches = async (reportId) => {
           lostReport: { report: lostId, isAccepted: false },
           foundReport: { report: foundId, isAccepted: false },
           score: Math.round(score),
+          distance: Math.round(distanceMeters / 1000),
           status: "PROPOSED",
         },
         { upsert: true, new: true },
@@ -286,7 +333,7 @@ export const getAllMatches = async (filters = {}) => {
         ])
         .sort({ createdAt: -1 });
 
-        if(!matches) throw createNotFoundError('There is no any Matches');
+        if(!matches) return [];
 
     return matches;
 };
@@ -311,7 +358,7 @@ export const getUserMatches = async (userId) => {
         const isFoundOwner = match.foundReport.report?.user.toString() === userId.toString();
         return isLostOwner || isFoundOwner;
     });
-    if(userMatches.length ===0)  throw createNotFoundError('There is no any Matches');
+    if(userMatches.length ===0) return [];
 
     // Add hasChat logic: check if there's an active conversation with messages for either report
     const enhancedMatches = await Promise.all(userMatches.map(async (match) => {
