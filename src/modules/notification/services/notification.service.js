@@ -1,7 +1,7 @@
 import { Notification } from '../../../DB/models/notification.model.js';
 import { createNotFoundError } from '../../../utils/appError.js';
-import { getIO } from '../../../config/socket.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
+import { emitToUser } from '../../chat/services/socketEmitter.js';
 
 // ==========================
 // 1. GET ALL NOTIFICATIONS
@@ -70,7 +70,7 @@ export const markAllAsReadService = async (userId) => {
 // 4. THE INTERNAL HELPER (For other modules to use)
 // ==========================
 export const sendNotification = async ({ recipientId, category, title, message, data }) => {
-    // A. Save to MongoDB so it persists after page refresh
+    // A. Save to MongoDB
     const newNotification = await Notification.create({
         recipient: recipientId,
         category,
@@ -79,11 +79,10 @@ export const sendNotification = async ({ recipientId, category, title, message, 
         data
     });
 
-    // B. Emit via Socket.io for real-time popup (if user is online)
+    // B. Emit via Socket.io using the new Chat Infrastructure!
     try {
-        const io = getIO();
-        // Emit to the specific user's private room
-        io.to(recipientId.toString()).emit('new_notification', newNotification);
+        // 👇 2. Use emitToUser instead of io.to()
+        emitToUser(recipientId.toString(), 'new_notification', newNotification);
     } catch (error) {
         console.error("Socket emission failed, but notification saved to DB:", error.message);
     }
