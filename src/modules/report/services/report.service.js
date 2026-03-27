@@ -174,3 +174,20 @@ export const getUserReportsService = async (userId, query) => {
 
     return { reports, total };
 };
+
+export const getStatsService = async () => {
+    const [totalReports, resolvedReports, activeReports] = await Promise.all([
+        Report.countDocuments(),
+        Report.countDocuments({ status: 'RESOLVED' }),
+        Report.countDocuments({ status: 'OPEN' }),
+    ]);
+
+    const uniqueUsers = await User.countDocuments();
+
+    return {
+        totalReports,
+        resolvedReports,
+        activeReports,
+        totalMembers: uniqueUsers,
+    };
+};
