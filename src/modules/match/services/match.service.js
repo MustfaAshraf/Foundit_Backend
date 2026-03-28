@@ -313,6 +313,24 @@ export const resolveMatch = async (matchId, userId) => {
         throw createForbiddenError('You are not authorized to resolve this match.');
     }
 
+    // Auto-promote to ACCEPTED if a chat already exists between both parties
+    if (match.status === 'PROPOSED') {
+        const user1 = match.lostReport.report?.user;
+        const user2 = match.foundReport.report?.user;
+        const conversation = await Conversation.findOne({
+            participants: { $all: [user1, user2] }
+        });
+
+        if (conversation) {
+            match.lostReport.isAccepted = true;
+            match.foundReport.isAccepted = true;
+            match.status = 'ACCEPTED';
+            match.lostReport.report.status = 'RESOLVED';
+            match.foundReport.report.status = 'RESOLVED';
+            await match.save();
+        }
+    }
+
     if (match.status !== 'ACCEPTED') {
         throw createBadRequestError('Match cannot be resolved unless it is fully ACCEPTED by both parties.');
     }
@@ -371,11 +389,13 @@ export const getUserMatches = async (userId) => {
     });
     if(userMatches.length ===0) return [];
 
-    // Add hasChat logic: check if there's an active conversation with messages for either report
+    // Add hasChat logic: check if there's an active conversation between the two users
     const enhancedMatches = await Promise.all(userMatches.map(async (match) => {
+        const user1 = match.lostReport.report?.user;
+        const user2 = match.foundReport.report?.user;
+
         const conversation = await Conversation.findOne({
-            relatedReport: { $in: [match.lostReport.report._id, match.foundReport.report._id] },
-            lastMessage: { $exists: true, $ne: "" }
+            participants: { $all: [user1, user2] }
         });
 
         const matchObj = match.toObject();
