@@ -1,6 +1,6 @@
 import { Conversation } from '../../../DB/models/conversation.model.js';
 import { Message } from '../../../DB/models/message.model.js';
-import { User } from '../../../DB/models/User.model.js';
+import { User } from '../../../DB/models/user.model.js';
 import { emitToUser } from './socketEmitter.js';
 import { sendNotification } from '../../notification/services/notification.service.js';
 import { createNotFoundError, createBadRequestError, createForbiddenError } from '../../../utils/appError.js';

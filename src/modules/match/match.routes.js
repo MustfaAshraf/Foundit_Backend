@@ -28,4 +28,10 @@ router.get(
    restrictTo('super_admin', 'community-admin'), 
     matchController.getAllMatches
 );
+
+router.patch(
+    '/resolve/:matchId', restrictTo('user'),
+    matchController.resolveMatch
+);
+
 export default router;

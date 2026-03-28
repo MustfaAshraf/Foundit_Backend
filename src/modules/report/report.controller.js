@@ -44,3 +44,8 @@ export const getUserReports = asyncHandler(async (req, res) => {
 
 
 });
+
+export const getStats = asyncHandler(async (req, res) => {
+    const stats = await reportService.getStatsService();
+    return sendSuccessResponse(res, stats, 200);
+});

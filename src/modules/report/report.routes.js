@@ -13,7 +13,9 @@ router.route('/')
 )
 .get(reportController.getReports);
 
+router.get('/stats', reportController.getStats);
 router.get('/my-reports', protect, reportController.getUserReports);
+
 router.route('/:id')
     .get(reportController.getReportById)
     .delete(

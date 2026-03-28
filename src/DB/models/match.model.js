@@ -11,7 +11,11 @@ const matchSchema = new mongoose.Schema({
         isAccepted: { type: Boolean, default: false },
         acceptedAt: Date
     },
-
+    distance: {
+        type: Number,
+        default: 0,
+        // required: true
+    },
     score: {
         type: Number,
         required: true
