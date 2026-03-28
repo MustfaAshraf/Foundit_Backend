@@ -15,4 +15,7 @@ router.use(protect, restrictTo('super_admin', 'community_admin'));
 // @desc    Get dashboard metrics (counts)
 router.get('/stats', adminController.getAdminStats);
 
+// @desc    Moderate a report (Update status & notify)
+router.patch('/report/:id/status', adminController.updateReportStatus);
+
 export default router;
