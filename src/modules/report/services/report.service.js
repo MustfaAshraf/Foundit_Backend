@@ -148,9 +148,12 @@ export const deleteReportService = async (reportId, user) => {
     }
 
     // Verify Ownership (User is from `protect` middleware)
-    if (report.user.toString() !== user._id.toString() && user.role !== 'admin') {
-        throw createForbiddenError('You do not have permission to delete this report.');
-    }
+    const isAdmin = ['super_admin', 'community_admin'].includes(user.role);
+const isOwner = report.user.toString() === user._id.toString();
+
+if (!isOwner && !isAdmin) {
+    throw createForbiddenError('You do not have permission to delete this report.');
+}
 
     // Delete
     await report.deleteOne();
