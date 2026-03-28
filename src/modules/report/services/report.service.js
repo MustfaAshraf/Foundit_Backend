@@ -33,13 +33,17 @@ export const createReportService = async (bodyData, files, userId) => {
     }
 
     // 1. Process Images to Cloudinary (max 5)
-    let images = [];
+    let images =[];
     if (files && files.length > 0) {
         // Upload all files to Cloudinary in parallel
-        const uploadPromises = files.map(file => uploadToCloudinary(file.path, 'reports'));
+        const uploadPromises = files.map(file => uploadToCloudinary(file.buffer, 'FoundIt/Reports'));
         const uploadResults = await Promise.all(uploadPromises);
-        // Save the resulting secure URLs
-        images = uploadResults.map(result => result.url);
+        
+        // 👇 2. FIX: Save BOTH url and publicId so we can delete them later
+        images = uploadResults.map(result => ({
+            url: result.url,
+            publicId: result.publicId
+        }));
     }
 
     // 2. Parse GeoJSON Location
@@ -120,10 +124,9 @@ export const getReportsService = async (query) => {
         .limitFields()
         .paginate();
 
-    // 2. Execute Query
-    const reports = await apiFeatures.mongooseQuery.populate('user', 'name profileImage');
+    // 👇 FIX: Changed 'profileImage' to 'avatar.url' to match your User Model!
+    const reports = await apiFeatures.mongooseQuery.populate('user', 'name avatar.url');
 
-    // 3. Count Total Docs for Pagination info
     const totalQuery = new ApiFeatures(Report.find(), query).filter().mongooseQuery;
     const total = await totalQuery.countDocuments();
 
@@ -131,11 +134,10 @@ export const getReportsService = async (query) => {
 };
 
 export const getReportByIdService = async (reportId) => {
-    const report = await Report.findById(reportId).populate('user', 'name profileImage');
+    // 👇 FIX: Changed 'profileImage' to 'avatar.url'
+    const report = await Report.findById(reportId).populate('user', 'name avatar.url');
 
-    if (!report) {
-        throw createNotFoundError('Report not found');
-    }
+    if (!report) throw createNotFoundError('Report not found');
 
     return report;
 };
@@ -143,24 +145,34 @@ export const getReportByIdService = async (reportId) => {
 export const deleteReportService = async (reportId, user) => {
     const report = await Report.findById(reportId);
 
-    if (!report) {
-        throw createNotFoundError('Report not found');
-    }
+    if (!report) throw createNotFoundError('Report not found');
 
-    // Verify Ownership (User is from `protect` middleware)
-    if (report.user.toString() !== user._id.toString() && user.role !== 'admin') {
+    // 👇 FIX: Updated Admin Role Check to match your Enums
+    if (report.user.toString() !== user._id.toString() && !['super_admin', 'community_admin'].includes(user.role)) {
         throw createForbiddenError('You do not have permission to delete this report.');
     }
 
-    // Delete
+    // 👇 3. DELETE IMAGES FROM CLOUDINARY
+    if (report.images && report.images.length > 0) {
+        // Run all deletion requests to Cloudinary in parallel to save time
+        const deletePromises = report.images.map(image => {
+            if (image.publicId) {
+                return deleteFromCloudinary(image.publicId);
+            }
+            return Promise.resolve(); // Ignore if no publicId exists
+        });
+        
+        await Promise.all(deletePromises).catch(err => {
+            console.error("Failed to delete some images from Cloudinary:", err);
+            // We log the error but do not throw, so the report still gets deleted from DB
+        });
+    }
+
+    // 4. Delete the document from MongoDB
     await report.deleteOne();
     return true;
 };
 
-
-
-
-// getUserReportsService
 export const getUserReportsService = async (userId, query) => {
     const filter = { user: userId };
     
