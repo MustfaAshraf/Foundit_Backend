@@ -41,7 +41,11 @@ const reportSchema = new mongoose.Schema({
     },
 
     // --- Status & Media ---
-    images: [{ type: String }],
+    images:[{ 
+        url: String,
+        publicId: String
+    }],
+    
     dateHappened: {
         type: Date,
         required: true
