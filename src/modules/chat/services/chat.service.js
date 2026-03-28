@@ -1,7 +1,8 @@
 import { Conversation } from '../../../DB/models/conversation.model.js';
 import { Message } from '../../../DB/models/message.model.js';
-import { User } from '../../../DB/models/User.model.js';
+import { User } from '../../../DB/models/user.model.js';
 import { emitToUser } from './socketEmitter.js';
+import { sendNotification } from '../../notification/services/notification.service.js';
 import { createNotFoundError, createBadRequestError, createForbiddenError } from '../../../utils/appError.js';
 
 export const createConversationService = async (userAId, userBId) => {
@@ -96,6 +97,15 @@ export const sendMessageService = async (senderId, conversationId, content) => {
 
     emitToUser(receiverId, "receiveMessage", populatedMessage);
     emitToUser(senderId.toString(), "receiveMessage", populatedMessage);
+
+    // 🔔 Send Real-time Notification to the receiver
+    sendNotification({
+        recipientId: receiverId,
+        category: 'MESSAGE',
+        title: `New Message from ${populatedMessage.sender.name}`,
+        message: content,
+        data: { conversationId: conversationId.toString() }
+    }).catch(err => console.error("Message Notification failed:", err.message));
 
     return populatedMessage;
 };

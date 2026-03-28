@@ -1,11 +1,36 @@
 import { Report } from '../../../DB/models/report.model.js';
+import { User } from '../../../DB/models/user.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
-import { uploadToCloudinary, deleteFromCloudinary } from '../../../utils/cloudinary.js'; 
-import * as matchService from "../../match/services/match.service.js"; 
+import { uploadToCloudinary } from '../../../utils/cloudinary.js';
+import * as matchController from "../../match/match.controller.js" 
+import * as matchService from "../../match/services/match.service.js" 
+
+
+// Stubbing matchService for now
+const userService = {
+    refill: () => {
+        throw createBadRequestError('Insufficient credits. Please refill your quota.');
+    }
+};
+
 
 export const createReportService = async (bodyData, files, userId) => {
-    const { title, description, type, category, color, brand, tags, dateHappened, locationName, location } = bodyData;
+    const { title, description, type, category, subCategory, color, brand, tags, dateHappened, locationName, location } = bodyData;
+
+    // 0. Enforce Active Credit Quotas Dynamically Before Spending Backend Cloudinary Compute
+    const user = await User.findById(userId);
+    if (!user) throw createNotFoundError('User not found');
+
+    // Admin Exemption: Admins and community admins do not consume credits
+    const isAdmin = user.role === 'super_admin' || user.role === 'community_admin' || user.role === 'admin';
+    
+    // Robust Credit Check: Default to 3 for legacy/missing accounts, except admins
+    const currentCredits = (user.credits !== undefined && user.credits !== null) ? user.credits : 3;
+
+    if (!isAdmin && currentCredits <= 0) {
+        userService.refill();            
+    }
 
     // 1. Process Images to Cloudinary (max 5)
     let images =[];
@@ -26,30 +51,60 @@ export const createReportService = async (bodyData, files, userId) => {
     if (location) {
         try {
             const locObj = typeof location === 'string' ? JSON.parse(location) : location;
-            if (locObj.coordinates && Array.isArray(locObj.coordinates)) {
+            if (locObj.type === "Point" && Array.isArray(locObj.coordinates)) {
+                // GeoJSON format
+                parsedLocation = locObj;
+            } else if (locObj.coordinates && Array.isArray(locObj.coordinates)) {
+                // Format: { coordinates: [lng, lat] }
                 parsedLocation = { type: 'Point', coordinates: locObj.coordinates };
-            } else if (locObj.lng && locObj.lat) {
-                parsedLocation = { type: 'Point', coordinates: [locObj.lng, locObj.lat] };
-            } else if (Array.isArray(locObj)) {
-                parsedLocation = { type: 'Point', coordinates: locObj }; 
+            } else if (locObj.lng !== undefined && locObj.lat !== undefined) {
+                // Format: { lng: X, lat: Y }
+                parsedLocation = { type: 'Point', coordinates: [Number(locObj.lng), Number(locObj.lat)] };
+            } else if (locObj.lon !== undefined && locObj.lat !== undefined) {
+                // Format: { lon: X, lat: Y }
+                parsedLocation = { type: 'Point', coordinates: [Number(locObj.lon), Number(locObj.lat)] };
+            } else if (Array.isArray(locObj) && locObj.length === 2) {
+                // Format: [lng, lat]
+                parsedLocation = { type: 'Point', coordinates: [Number(locObj[0]), Number(locObj[1])] }; 
             } else {
-                throw createBadRequestError('Invalid location format. Must provide lng and lat.');
+                throw createBadRequestError('Invalid location format. Expecting [lng, lat], {lng, lat}, or GeoJSON object.');
             }
         } catch (error) {
-            if (error.statusCode) throw error; 
-            throw createBadRequestError('Invalid location JSON format');
+            if (error.statusCode) throw error; // Re-throw generic mapping errors
+            throw createBadRequestError('Invalid location JSON structure. Parsing failed.');
         }
     }
 
     // 3. Create Report in DB
-    const newReport = await Report.create({
-        title, description, type, category, color, brand,
-        tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) :[],
-        dateHappened, locationName, location: parsedLocation,
-        images, user: userId
-    });
+    let newReport;
+    try {
+        newReport = await Report.create({
+            title,
+            description,
+            type,
+            category,
+            subCategory,
+            color,
+            brand,
+            tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
+            dateHappened,
+            locationName,
+            location: parsedLocation,
+            images,
+            user: userId
+        });
+    } catch (dbError) {
+        throw createBadRequestError("DB Error: " + (dbError.message || 'Unknown Validation Error'));
+    }
 
-    // Run match in background
+    // 4. Actively Deduct Metric Quota Globally (Only for regular users)
+    if (!isAdmin) {
+        user.credits = currentCredits - 1;
+    
+        await user.save();
+    }
+
+    // used to run match in background
     setImmediate(async () => {
         try {
             await matchService.findMatches(newReport._id);
@@ -62,7 +117,8 @@ export const createReportService = async (bodyData, files, userId) => {
 };
 
 export const getReportsService = async (query) => {
-    const apiFeatures = new ApiFeatures(Report.find(), query)
+    // 1. Build query using ApiFeatures
+    const apiFeatures = new ApiFeatures(Report.find({ status: 'OPEN' }), query)
         .filter()
         .sort()
         .limitFields()
@@ -129,4 +185,21 @@ export const getUserReportsService = async (userId, query) => {
     const total = await Report.countDocuments(filter);
 
     return { reports, total };
+};
+
+export const getStatsService = async () => {
+    const [totalReports, resolvedReports, activeReports] = await Promise.all([
+        Report.countDocuments(),
+        Report.countDocuments({ status: 'RESOLVED' }),
+        Report.countDocuments({ status: 'OPEN' }),
+    ]);
+
+    const uniqueUsers = await User.countDocuments();
+
+    return {
+        totalReports,
+        resolvedReports,
+        activeReports,
+        totalMembers: uniqueUsers,
+    };
 };
