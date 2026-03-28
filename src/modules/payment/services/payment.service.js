@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { Transaction } from '../../../DB/models/transaction.model.js';
-import { User } from '../../../DB/models/User.model.js';
+import { User } from '../../../DB/models/user.model.js';
 import { createBadRequestError } from '../../../utils/appError.js';
 import { config } from '../../../config/env.js';
 

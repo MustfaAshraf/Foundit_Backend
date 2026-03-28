@@ -1,4 +1,4 @@
-import { User } from '../DB/models/User.model.js';
+import { User } from '../DB/models/user.model.js';
 import { verifyToken } from '../utils/jwt.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { createForbiddenError, createUnauthorizedError } from '../utils/appError.js';
