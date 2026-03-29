@@ -3,27 +3,40 @@ import mongoose from 'mongoose';
 const communitySchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true,
-        unique: true
-    }, // "NTI Smart Village"
+        required: [true, 'Community name is required'],
+        trim: true,
+    },
     domain: {
         type: String,
-        unique: true
-    }, // "@nti.sci.eg"
+        required: [true, 'Email domain is required'],
+        unique: true,
+        lowercase: true,
+        trim: true
+    }, //  @cu.edu.eg
     type: {
         type: String,
-        enum: ['University', 'Compound', 'Company'],
-        required: true
+        enum: ['University', 'Compound', 'Company', 'Others'],
+        required: true,
+        default: 'Others'
+    },
+    plan: {
+        type: String,
+        enum: ['FREE', 'PRO', 'ENTERPRISE'],
+        default: 'FREE'
     },
     logo: String,
 
-    // --- Geo-Fencing ---
+    // --- Geo-Fencing (Structured for MongoDB GeoSpatial Queries) ---
     location: {
         type: {
             type: String,
+            enum: ['Point'],
             default: 'Point'
         },
-        coordinates: [Number] // [Long, Lat]
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            required: true
+        }
     },
     radius: {
         type: Number,
@@ -39,6 +52,11 @@ const communitySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }]
-}, { timestamps: true });
+}, {
+    timestamps: true
+});
 
-export const Community = mongoose.model('Community', communitySchema);
+// إضافة Index للمكان عشان نعرف نعمل عمليات بحث جغرافية مستقبلاً
+communitySchema.index({ location: '2dsphere' });
+
+export const Community = mongoose.models.Community || mongoose.model('Community', communitySchema);
