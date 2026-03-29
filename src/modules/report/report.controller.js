@@ -26,10 +26,10 @@ export const getReportById = asyncHandler(async (req, res, next) => {
 });
 
 export const deleteReport = asyncHandler(async (req, res, next) => {
-    await reportService.deleteReportService(req.params.id, req.user);
+    const data = await reportService.deleteReportService(req.params.id, req.user);
 
-    // 204 No Content
-    return sendSuccessResponse(res, null, 204);
+    // 200 OK with updated reports list
+    return sendSuccessResponse(res, data, 200);
 });
 
 
