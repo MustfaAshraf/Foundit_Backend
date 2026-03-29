@@ -230,9 +230,35 @@ export const acceptMatch = async (matchId, userId) => {
   if (isFoundUser) {
     match.foundReport.isAccepted = true;
     match.foundReport.acceptedAt = new Date();
+    
+    // Notify Lost User
+    try {
+      await sendNotification({
+        recipientId: match.lostReport.report.user,
+        category: 'MATCH',
+        title: 'Match Accepted!',
+        message: `The owner of the found item has accepted the match for your report: ${match.lostReport.report.title}.`,
+        data: { matchId: match._id }
+      });
+    } catch (notifErr) {
+      console.error("Accept Match Notification Error:", notifErr.message);
+    }
   } else {
     match.lostReport.isAccepted = true;
     match.lostReport.acceptedAt = new Date();
+
+    // Notify Found User
+    try {
+      await sendNotification({
+        recipientId: match.foundReport.report.user,
+        category: 'MATCH',
+        title: 'Match Accepted!',
+        message: `The owner of the lost item has accepted the match for your report: ${match.foundReport.report.title}.`,
+        data: { matchId: match._id }
+      });
+    } catch (notifErr) {
+      console.error("Accept Match Notification Error:", notifErr.message);
+    }
   }
   if (match.lostReport.isAccepted && match.foundReport.isAccepted) {
     match.status = "ACCEPTED";
@@ -273,6 +299,23 @@ export const rejectMatch = async (matchId, userId) => {
     match.status = 'REJECTED';
     
     await match.save();
+
+    // Notify other party
+    try {
+      const otherUserId = isLostOwner ? match.foundReport.report.user : match.lostReport.report.user;
+      const myItemTitle = isLostOwner ? match.lostReport.report.title : match.foundReport.report.title;
+      const otherItemTitle = isLostOwner ? match.foundReport.report.title : match.lostReport.report.title;
+
+      await sendNotification({
+        recipientId: otherUserId,
+        category: 'MATCH',
+        title: 'Match Declined',
+        message: `The match proposal between your item "${otherItemTitle}" and "${myItemTitle}" was declined.`,
+        data: { matchId: match._id }
+      });
+    } catch (notifErr) {
+      console.error("Reject Match Notification Error:", notifErr.message);
+    }
 
     // Check gracefully evaluating if native global revert to 'OPEN' safely applies globally exclusively
     const checkAndRevertReport = async (repId) => {

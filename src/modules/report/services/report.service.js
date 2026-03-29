@@ -2,7 +2,7 @@ import { Report } from '../../../DB/models/report.model.js';
 import { User } from '../../../DB/models/user.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
-import { uploadToCloudinary } from '../../../utils/cloudinary.js';
+import { uploadToCloudinary, deleteFromCloudinary } from '../../../utils/cloudinary.js';
 import * as matchController from "../../match/match.controller.js" 
 import * as matchService from "../../match/services/match.service.js" 
 
@@ -120,6 +120,7 @@ export const getReportsService = async (query) => {
     // 1. Build query using ApiFeatures
     const apiFeatures = new ApiFeatures(Report.find({ status: 'OPEN' }), query)
         .filter()
+        .search()
         .sort()
         .limitFields()
         .paginate();
@@ -134,7 +135,7 @@ export const getReportsService = async (query) => {
 };
 
 export const getReportByIdService = async (reportId) => {
-    // 👇 FIX: Changed 'profileImage' to 'avatar.url'
+    // FIX: Changed 'profileImage' to 'avatar.url'
     const report = await Report.findById(reportId).populate('user', 'name avatar.url');
 
     if (!report) throw createNotFoundError('Report not found');
@@ -147,12 +148,15 @@ export const deleteReportService = async (reportId, user) => {
 
     if (!report) throw createNotFoundError('Report not found');
 
-    // 👇 FIX: Updated Admin Role Check to match your Enums
-    if (report.user.toString() !== user._id.toString() && !['super_admin', 'community_admin'].includes(user.role)) {
+    // Verify Ownership (User is from `protect` middleware)
+    const isAdmin = ['super_admin', 'community_admin'].includes(user.role);
+    const isOwner = report.user.toString() === user._id.toString();
+
+    if (!isOwner && !isAdmin) {
         throw createForbiddenError('You do not have permission to delete this report.');
     }
 
-    // 👇 3. DELETE IMAGES FROM CLOUDINARY
+    // 👆 3. DELETE IMAGES FROM CLOUDINARY
     if (report.images && report.images.length > 0) {
         // Run all deletion requests to Cloudinary in parallel to save time
         const deletePromises = report.images.map(image => {
@@ -170,7 +174,10 @@ export const deleteReportService = async (reportId, user) => {
 
     // 4. Delete the document from MongoDB
     await report.deleteOne();
-    return true;
+
+    // 5. Fetch and return the updated reports for the user (to refresh the frontend automatically)
+    const updatedData = await getUserReportsService(user._id, {});
+    return updatedData;
 };
 
 export const getUserReportsService = async (userId, query) => {
@@ -178,6 +185,7 @@ export const getUserReportsService = async (userId, query) => {
     
     const apiFeatures = new ApiFeatures(Report.find(filter), query)
         .filter()
+        .search()
         .sort()
         .paginate();
 
@@ -203,3 +211,4 @@ export const getStatsService = async () => {
         totalMembers: uniqueUsers,
     };
 };
+
