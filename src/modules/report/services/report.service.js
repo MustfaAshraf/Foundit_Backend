@@ -120,6 +120,7 @@ export const getReportsService = async (query) => {
     // 1. Build query using ApiFeatures
     const apiFeatures = new ApiFeatures(Report.find({ status: 'OPEN' }), query)
         .filter()
+        .search()
         .sort()
         .limitFields()
         .paginate();
@@ -181,6 +182,7 @@ export const getUserReportsService = async (userId, query) => {
     
     const apiFeatures = new ApiFeatures(Report.find(filter), query)
         .filter()
+        .search()
         .sort()
         .paginate();
 
@@ -206,3 +208,4 @@ export const getStatsService = async () => {
         totalMembers: uniqueUsers,
     };
 };
+

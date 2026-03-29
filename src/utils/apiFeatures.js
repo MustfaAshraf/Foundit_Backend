@@ -7,7 +7,7 @@ export class ApiFeatures {
     // 1. Filtering (e.g. ?type=LOST&category=Pets)
     filter() {
         const queryObj = { ...this.queryString };
-        const excludedFields = ['page', 'sort', 'limit', 'fields', 'dateRange'];
+        const excludedFields = ['page', 'sort', 'limit', 'fields', 'dateRange', 'keyword'];
         excludedFields.forEach(el => delete queryObj[el]);
 
         // 1.1 Handle Basic & Advanced filtering (gte, gt, lte, lt)
@@ -73,6 +73,26 @@ export class ApiFeatures {
         const skip = (page - 1) * limit;
 
         this.mongooseQuery = this.mongooseQuery.skip(skip).limit(limit);
+        return this;
+    }
+
+    // 5. Search (e.g. ?keyword=laptop)
+    search() {
+        if (this.queryString.keyword) {
+            const queryStr = this.queryString.keyword;
+            
+            this.mongooseQuery = this.mongooseQuery.find({
+                $or: [
+                    { title: { $regex: queryStr, $options: 'i' } },
+                    { description: { $regex: queryStr, $options: 'i' } },
+                    { category: { $regex: queryStr, $options: 'i' } },
+                    { subCategory: { $regex: queryStr, $options: 'i' } },
+                    { brand: { $regex: queryStr, $options: 'i' } },
+                    { locationName: { $regex: queryStr, $options: 'i' } },
+                    { tags: { $in: [new RegExp(queryStr, 'i')] } } 
+                ]
+            });
+        }
         return this;
     }
 }
