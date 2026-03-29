@@ -29,3 +29,23 @@ export const createCommunity = catchAsyncError(async (req, res, next) => {
         }
     });
 });
+
+
+/**
+ * @desc    Toggle Community Subscription Status
+ * @route   PATCH /api/v1/admin/communities/:id/status
+ * @access  Private (Super Admin)
+ */
+export const toggleCommunityStatus = catchAsyncError(async (req, res, next) => {
+    const { id } = req.params;
+    const { subscriptionStatus } = req.body;
+
+    const community = await communityService.toggleCommunityStatusService(id, subscriptionStatus);
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            community
+        }
+    });
+});

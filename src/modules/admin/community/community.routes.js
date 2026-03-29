@@ -8,5 +8,7 @@ const router = express.Router();
 router.use(protect, restrictTo('super_admin'));
 
 router.get('/', communityController.getAllCommunities);
+// Route to update status specifically
+router.patch('/:id/status', communityController.toggleCommunityStatus);
 
 export default router;

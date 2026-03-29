@@ -33,3 +33,23 @@ export const createCommunityService = async (body) => {
 
     return newCommunity;
 };
+
+/**
+ * Toggle community subscription status (active/inactive)
+ * @param {string} id - Community ID
+ * @param {string} status - New status from request body
+ */
+export const toggleCommunityStatusService = async (id, status) => {
+    // Find community by ID and update only the status field
+    const updatedCommunity = await Community.findByIdAndUpdate(
+        id, 
+        { subscriptionStatus: status }, 
+        { new: true, runValidators: true }
+    );
+
+    if (!updatedCommunity) {
+        throw new Error('No community found with this ID');
+    }
+
+    return updatedCommunity;
+};
