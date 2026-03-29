@@ -67,6 +67,11 @@ const userSchema = new mongoose.Schema({
         type: Date,
         select: false
     },
+    status: {
+        type: String,
+        enum: ["active", "banned"],
+        default: "active"
+    },
     socialProvider: {
         type: String,
         enum: ['google', 'facebook', 'email'],
