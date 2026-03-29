@@ -13,7 +13,17 @@ export class ApiFeatures {
         // 1.1 Handle Basic & Advanced filtering (gte, gt, lte, lt)
         let queryStr = JSON.stringify(queryObj);
         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
-        this.mongooseQuery = this.mongooseQuery.find(JSON.parse(queryStr));
+        const finalQuery = JSON.parse(queryStr);
+
+        // 1.2 Make string filters case-insensitive (like category)
+        Object.keys(finalQuery).forEach(key => {
+            if (typeof finalQuery[key] === 'string' && key !== 'type') { 
+                // We use regex to make it case-insensitive
+                finalQuery[key] = { $regex: new RegExp(`^${finalQuery[key]}$`, 'i') };
+            }
+        });
+
+        this.mongooseQuery = this.mongooseQuery.find(finalQuery);
 
         // 1.2 Handle dateRange filtering specifically (today, week, month)
         if (this.queryString.dateRange) {
