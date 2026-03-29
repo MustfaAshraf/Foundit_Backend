@@ -1,10 +1,13 @@
-import authRouter from "../modules/auth/auth.routes.js"
-import matchRouter from "../modules/match/match.routes.js"
-import notificationRouter from "../modules/notification/notification.routes.js"
-import reportRouter from "../modules/report/report.routes.js"
-import userRouter from "../modules/user/user.routes.js"
-import paymentRouter from "../modules/payment/payment.routes.js"
-import adminRouter from "../modules/admin/reports/report.routes.js"
+import authRouter from "../modules/auth/auth.routes.js";
+import matchRouter from "../modules/match/match.routes.js";
+import notificationRouter from "../modules/notification/notification.routes.js";
+import reportRouter from "../modules/report/report.routes.js";
+import userRouter from "../modules/user/user.routes.js";
+import paymentRouter from "../modules/payment/payment.routes.js";
+import communityRouter from "../modules/admin/community/community.routes.js";
+
+// import userRouter from "../modules/user/user.routes.js"
+import adminRouter from "../modules/admin/reports/report.routes.js";
 import chatRouter from "../modules/chat/chat.routes.js";
 import adminTransRouter from "../modules/admin/transactions/transactions.routes.js";
 
@@ -17,7 +20,8 @@ const routerHandler = async (app, express) => {
   app.use("/api/v1/payments", paymentRouter);
   app.use("/api/v1/chat", chatRouter);
   app.use("/api/v1/admin/transactions", adminTransRouter);
-  app.use("/api/v1/admin/reports", adminRouter)
+  app.use("/api/v1/admin/communities", communityRouter);
+  app.use("/api/v1/admin/reports", adminRouter);
 
   app.use("/{*any}", (req, res) => {
     res.status(404).json({ message: "this Router is not found" });
