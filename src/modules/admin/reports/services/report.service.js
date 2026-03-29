@@ -1,6 +1,6 @@
-import { Report } from '../../../DB/models/report.model.js';
-import { sendNotification } from '../../notification/services/notification.service.js';
-import { createBadRequestError, createNotFoundError } from '../../../utils/appError.js';
+import { Report } from '../../../../DB/models/report.model.js';
+import { sendNotification } from '../../../notification/services/notification.service.js';
+import { createBadRequestError, createNotFoundError } from '../../../../utils/appError.js';
 
 /**
  * GET ADMIN DASHBOARD STATS
@@ -12,16 +12,16 @@ export const getAdminStatsService = async () => {
     const [totalReports, pendingReview, resolvedToday, resolvedTotal, matchedReports, rejectedCount] = await Promise.all([
         Report.countDocuments(),
         Report.countDocuments({ status: 'OPEN' }),
-        Report.countDocuments({ 
-            status: 'RESOLVED', 
-            updatedAt: { $gte: twentyFourHoursAgo } 
+        Report.countDocuments({
+            status: 'RESOLVED',
+            updatedAt: { $gte: twentyFourHoursAgo }
         }),
-        Report.countDocuments({ 
-            status: 'RESOLVED', 
+        Report.countDocuments({
+            status: 'RESOLVED',
         }),
-        Report.countDocuments({ 
-            status: 'MATCHED', 
-            updatedAt: { $gte: twentyFourHoursAgo } 
+        Report.countDocuments({
+            status: 'MATCHED',
+            updatedAt: { $gte: twentyFourHoursAgo }
         }),
         Report.countDocuments({ status: 'REJECTED' })
     ]);

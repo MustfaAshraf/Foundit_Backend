@@ -1,6 +1,6 @@
-import * as adminService from './services/admin.service.js';
-import { asyncHandler } from '../../utils/asyncHandler.js';
-import { sendSuccessResponse } from '../../utils/appResponse.js';
+import * as adminService from './services/report.service.js';
+import { asyncHandler } from '../../../utils/asyncHandler.js';
+import { sendSuccessResponse } from '../../../utils/appResponse.js';
 
 // @desc    Get moderation statistics
 // @route   GET /api/v1/admin/stats
@@ -16,8 +16,8 @@ export const getAdminStats = asyncHandler(async (req, res) => {
 export const updateReportStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-    
+
     const report = await adminService.updateReportStatusService(id, status);
-    
+
     return sendSuccessResponse(res, report);
 });
