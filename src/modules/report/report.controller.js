@@ -17,7 +17,7 @@ export const getReports = asyncHandler(async (req, res, next) => {
     if (req.redisCacheKey && redisClient.isOpen) {
         await redisClient.setEx(
             req.redisCacheKey, 
-            20, // Cache expires in 300 seconds
+            180, // Cache expires in 180 seconds
             JSON.stringify(reports)
         );
         console.log('💾 [REDIS] Saved Home Feed to Cache!');
