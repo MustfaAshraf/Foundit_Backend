@@ -13,9 +13,7 @@ router.route('/')
     uploadMultiple('images', 5),
     reportController.createReport
 )
-.get(protect, reportController.getReports)
-.get(cacheReports, reportController.getReports);
-
+.get(protect, cacheReports, reportController.getReports)
 router.get('/stats', protect, reportController.getStats);
 router.get('/my-reports', protect, restrictTo('user'), reportController.getUserReports);
 
