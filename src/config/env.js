@@ -77,6 +77,9 @@ export const config = {
     // Frontend
     FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173', // Vite default is 5173, NOT 3000
 
+    // Redis
+    REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+
     // Pagination
     PAGINATION: {
         DEFAULT_PAGE_SIZE: 10,

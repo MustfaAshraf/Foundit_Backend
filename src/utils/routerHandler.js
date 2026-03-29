@@ -7,9 +7,19 @@ import paymentRouter from "../modules/payment/payment.routes.js"
 import adminRouter from "../modules/admin/admin.routes.js"
 
 // import userRouter from "../modules/user/user.routes.js"
-import chatRouter from "../modules/chat/chat.routes.js"
-
+import chatRouter from "../modules/chat/chat.routes.js";
+// import adminTransRouter from "../modules/admin/transactions/transactions.routes.js";
+import adminTransRouter from "../modules/admin/transactions/transactions.routes.js";
 const routerHandler = async (app, express) => {
+  app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/match", matchRouter);
+  app.use("/api/v1/notifications", notificationRouter);
+  app.use("/api/v1/reports", reportRouter);
+  app.use("/api/v1/users", userRouter);
+  app.use("/api/v1/payments", paymentRouter);
+  // app.use("/api/v1/users", userRouter)
+  app.use("/api/v1/chat", chatRouter);
+  app.use("/api/v1/admin/transactions", adminTransRouter);
 
     app.use("/api/v1/auth", authRouter)
     app.use("/api/v1/match", matchRouter)
