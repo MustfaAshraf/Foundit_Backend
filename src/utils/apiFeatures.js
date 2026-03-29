@@ -7,14 +7,29 @@ export class ApiFeatures {
     // 1. Filtering (e.g. ?type=LOST&category=Pets)
     filter() {
         const queryObj = { ...this.queryString };
-        const excludedFields = ['page', 'sort', 'limit', 'fields'];
+        const excludedFields = ['page', 'sort', 'limit', 'fields', 'dateRange'];
         excludedFields.forEach(el => delete queryObj[el]);
 
-        // Advanced filtering for operators (gte, gt, lte, lt)
+        // 1.1 Handle Basic & Advanced filtering (gte, gt, lte, lt)
         let queryStr = JSON.stringify(queryObj);
         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
-
         this.mongooseQuery = this.mongooseQuery.find(JSON.parse(queryStr));
+
+        // 1.2 Handle dateRange filtering specifically (today, week, month)
+        if (this.queryString.dateRange) {
+            const date = new Date();
+            if (this.queryString.dateRange === 'today') {
+                date.setHours(date.getHours() - 24); // Last 24 hours
+                this.mongooseQuery = this.mongooseQuery.find({ createdAt: { $gte: date } });
+            } else if (this.queryString.dateRange === 'week') {
+                date.setDate(date.getDate() - 7); // Last 7 days
+                this.mongooseQuery = this.mongooseQuery.find({ createdAt: { $gte: date } });
+            } else if (this.queryString.dateRange === 'month') {
+                date.setMonth(date.getMonth() - 1); // Last 30 days
+                this.mongooseQuery = this.mongooseQuery.find({ createdAt: { $gte: date } });
+            }
+        }
+
         return this;
     }
 
@@ -44,7 +59,7 @@ export class ApiFeatures {
     // 4. Pagination (e.g. ?page=2&limit=10)
     paginate() {
         const page = this.queryString.page * 1 || 1;
-        const limit = this.queryString.limit * 1 || 10;
+        const limit = this.queryString.limit * 1 || 9;
         const skip = (page - 1) * limit;
 
         this.mongooseQuery = this.mongooseQuery.skip(skip).limit(limit);
