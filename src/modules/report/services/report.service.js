@@ -136,7 +136,7 @@ export const getReportsService = async (query) => {
 
 export const getReportByIdService = async (reportId) => {
     // FIX: Changed 'profileImage' to 'avatar.url'
-    const report = await Report.findById(reportId).populate('user', 'name avatar.url');
+    const report = await Report.findById(reportId).populate('user', 'name avatar.url email');
 
     if (!report) throw createNotFoundError('Report not found');
 
