@@ -1,7 +1,7 @@
-import { User } from "../../../../DB/models/User.model.js";
+import { User } from "../../../../DB/models/user.model.js";
 import { createNotFoundError, createBadRequestError } from "../../../../utils/appError.js";
 import { ApiFeatures } from "../../../../utils/apiFeatures.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 
 // ================= GET ALL USERS =================
 export const getAllUsersService = async (query) => {
