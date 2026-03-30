@@ -1,9 +1,11 @@
 import Joi from "joi";
 import { REGEX } from "../../../config/constants.js";
 
-export const updateMeSchema = Joi.object({
-    name: Joi.string().min(3).trim(),
-});
+export const updateMeSchema = {
+    body: Joi.object({
+        name: Joi.string().min(3).trim(),
+    }).required()
+};
 
 export const preferencesSchema = Joi.object({
     darkMode: Joi.boolean(),
@@ -14,11 +16,11 @@ export const preferencesSchema = Joi.object({
 export const changePasswordSchema = {
     body: Joi.object({
         currentPassword: Joi.string().required(),
-        newPassword: Joi.string().pattern(REGEX.PASSWORD).required().messages({
+        newPassword: Joi.string().pattern(/^(?=.*[A-Za-z])(?=.*\d).{8,}$/).required().messages({
             'string.pattern.base': 'Password must be at least 8 characters long and contain at least one letter and one number.',
         }),
-        confirmNewPassword: Joi.valid(Joi.ref('newPassword')).required().messages({
+        confirmNewPassword: Joi.string().valid(Joi.ref('newPassword')).messages({
             'any.only': 'New passwords do not match',
         }),
-    }).required()
+    }).required().unknown(true)
 };
