@@ -6,8 +6,7 @@ import {
     getUserByIdService,
     createUserService,
     updateUserStatusService,
-    addCreditsService,
-} from "./services/admin.user.service.js";
+} from "./services/user.service.js";
 
 // ================= GET ALL =================
 export const getAllUsers = asyncHandler(async (req, res) => {
