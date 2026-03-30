@@ -13,21 +13,23 @@ export const getReports = asyncHandler(async (req, res, next) => {
     // Pass req.query directly to the service
     const { reports, total } = await reportService.getReportsService(req.query);
 
+    const responsePayload = {
+        results: reports.length,
+        total,
+        reports
+    };
+
     // 👇 NEW: Save to Redis for 5 minutes (300 seconds) if it wasn't cached
     if (req.redisCacheKey && redisClient.isOpen) {
         await redisClient.setEx(
             req.redisCacheKey, 
             180, // Cache expires in 180 seconds
-            JSON.stringify(reports)
+            JSON.stringify(responsePayload)
         );
         console.log('💾 [REDIS] Saved Home Feed to Cache!');
     }
 
-    return sendSuccessResponse(res, {
-        results: reports.length,
-        total,
-        reports
-    }, 200);
+    return sendSuccessResponse(res, responsePayload, 200);
 });
 
 export const getReportById = asyncHandler(async (req, res, next) => {
