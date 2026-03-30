@@ -199,8 +199,13 @@ export const forgotPasswordService = async (email) => {
     user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 mins (Optional if JWT handles expiry)
     await user.save();
 
-    // 3. Send Email
-    const resetUrl = `${config.FRONTEND_URL}/reset-password/${resetToken}`;
+    // 3. Send Email (Smart Redirect)
+    // If user is an admin, send to Dashboard, otherwise send to standard React App
+    const baseUrl = (user.role === 'super_admin' || user.role === 'community_admin') 
+        ? config.DASHBOARD_URL 
+        : config.FRONTEND_URL;
+
+    const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
     const message = `
         <h2>Password Reset</h2>
         <p>Click the link below to reset your password:</p>
