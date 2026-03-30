@@ -2,14 +2,20 @@ import { Server } from "socket.io";
 import { verifyToken } from "../../../utils/jwt.js";
 import { addUser, removeUser, getOnlineUsers } from "./onlineUsers.js";
 import { registerIo, emitToUser } from "./socketEmitter.js";
-import { User } from "../../../DB/models/User.model.js";
+import { User } from "../../../DB/models/user.model.js";
 import { Message } from "../../../DB/models/message.model.js";
 import { Conversation } from "../../../DB/models/conversation.model.js";
 
 export const initSocket = (server) => {
+  const allowedOrigins = [
+    process.env.FRONTEND_URL || "http://localhost:5173",
+    process.env.ADMIN_URL || "http://localhost:4000",
+    "http://localhost:5174"
+  ]; 
+
   const io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:5173" || "http://localhost:5174",
+      origin: allowedOrigins,
       credentials: true
     },
   });

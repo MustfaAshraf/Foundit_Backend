@@ -19,7 +19,8 @@ export const getUserConversations = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/chat/messages
 export const sendMessage = asyncHandler(async (req, res, next) => {
   const { conversationId, content } = req.body;
-  const message = await chatService.sendMessageService(req.user._id, conversationId, content);
+  const files = req.files || [];
+  const message = await chatService.sendMessageService(req.user._id, conversationId, content, files);
 
   return sendSuccessResponse(res, message, 201);
 });
