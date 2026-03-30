@@ -6,8 +6,6 @@ import userRouter from "../modules/user/user.routes.js";
 import paymentRouter from "../modules/payment/payment.routes.js";
 import communityRouter from "../modules/admin/community/community.routes.js";
 import adminUserRoutes from "../modules/admin/user/user.routes.js";
-
-// import userRouter from "../modules/user/user.routes.js"
 import adminRouter from "../modules/admin/reports/report.routes.js";
 import chatRouter from "../modules/chat/chat.routes.js";
 import adminTransRouter from "../modules/admin/transactions/transactions.routes.js";
@@ -20,11 +18,11 @@ const routerHandler = async (app, express) => {
   app.use("/api/v1/users", userRouter);
   app.use("/api/v1/payments", paymentRouter);
   app.use("/api/v1/chat", chatRouter);
+  app.use("/api/v1/admin/users", adminUserRoutes);
   app.use("/api/v1/admin/transactions", adminTransRouter);
   app.use("/api/v1/admin/communities", communityRouter);
   app.use("/api/v1/admin/reports", adminRouter);
 
-  app.use("/api/v1/admin/users", adminUserRoutes);
 
   app.use("/{*any}", (req, res) => {
     res.status(404).json({ message: "this Router is not found" });
