@@ -52,6 +52,9 @@ export const getAdminStatsService = async () => {
         }),
         Report.countDocuments({
             status: 'MATCHED',
+        }),
+        Report.countDocuments({
+            status: 'MATCHED',
             updatedAt: { $gte: twentyFourHoursAgo }
         }),
         Report.countDocuments({ status: 'REJECTED' })
