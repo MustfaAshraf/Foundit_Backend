@@ -11,7 +11,7 @@ export const bootstrap = (app) => {
     // --- Global Middlewares ---
     // 1. CORS MUST BE FIRST! (Let's the browser know it's allowed to talk to us)
     app.use(cors({
-        origin: process.env.FRONTEND_URL, // Ensure this matches your React port in .env
+        origin: [process.env.FRONTEND_URL, process.env.DASHBOARD_URL],
         credentials: true
     }));
 
