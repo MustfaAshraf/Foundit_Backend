@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { protect } from "../../middlewares/auth.middleware.js";
+import { uploadMultiple } from "../../middlewares/upload.middleware.js";
 import {
   createConversation,
   getUserConversations,
@@ -17,7 +18,7 @@ chatRouter.post("/conversations", createConversation);
 chatRouter.get("/conversations", getUserConversations);
 
 // --- Messages ---
-chatRouter.post("/messages", sendMessage);
+chatRouter.post("/messages", uploadMultiple("attachments", 5), sendMessage);
 chatRouter.get("/messages/:id", getConversationMessages);
 
 export default chatRouter;

@@ -4,6 +4,7 @@ import { User } from '../../../DB/models/user.model.js';
 import { emitToUser } from './socketEmitter.js';
 import { sendNotification } from '../../notification/services/notification.service.js';
 import { createNotFoundError, createBadRequestError, createForbiddenError } from '../../../utils/appError.js';
+import { uploadToCloudinary } from '../../../utils/cloudinary.js';
 
 export const createConversationService = async (userAId, userBId) => {
     if (!userBId) {
@@ -37,8 +38,24 @@ export const createConversationService = async (userAId, userBId) => {
 };
 
 export const getUserConversationsService = async (userId) => {
-    const conversations = await Conversation.find({ participants: userId })
+    const user = await User.findById(userId);
+    const isAdmin = user?.role === 'super_admin';
+
+    const query = { participants: userId };
+    
+    // If admin, also show all unassigned support tickets
+    if (isAdmin) {
+        query.$or = [
+            { participants: userId },
+            { isSupport: true, assignedTo: null }
+        ];
+        // Remove the top-level participants: userId filter if we are using $or
+        delete query.participants;
+    }
+
+    const conversations = await Conversation.find(query)
         .populate("participants", "name email profileImage")
+        .populate("assignedTo", "name email")
         .sort({ lastMessageAt: -1 })
         .lean();
 
@@ -50,16 +67,21 @@ export const getUserConversationsService = async (userId) => {
 
         return {
             _id: conv._id,
-            otherUser,
+            otherUser: otherUser || (conv.participants.length > 0 ? conv.participants[0] : null),
             lastMessage: conv.lastMessage || "",
             updatedAt: conv.lastMessageAt || conv.createdAt,
+            isSupport: conv.isSupport,
+            assignedTo: conv.assignedTo,
         };
     });
 };
 
-export const sendMessageService = async (senderId, conversationId, content) => {
-    if (!conversationId || !content) {
-        throw createBadRequestError("conversationId and content are required.");
+export const sendMessageService = async (senderId, conversationId, content, files = []) => {
+    if (!conversationId) {
+        throw createBadRequestError("conversationId is required.");
+    }
+    if (!content && files.length === 0) {
+        throw createBadRequestError("Message content or at least one attachment is required.");
     }
 
     const conversation = await Conversation.findById(conversationId);
@@ -75,15 +97,25 @@ export const sendMessageService = async (senderId, conversationId, content) => {
         throw createForbiddenError("Forbidden.");
     }
 
+    // Handle File Uploads
+    const attachments = [];
+    if (files && files.length > 0) {
+        for (const file of files) {
+            const { url } = await uploadToCloudinary(file.buffer, `chat/${conversationId}`);
+            attachments.push(url);
+        }
+    }
+    
     const message = await Message.create({
         conversationId: conversationId,
         sender: senderId,
-        content,
+        content: content || "",
+        attachments,
         readBy: []
     });
 
     // Update conversation metadata
-    conversation.lastMessage = content;
+    conversation.lastMessage = content || (attachments.length > 0 ? "Sent an image" : "");
     conversation.lastMessageAt = message.createdAt;
     await conversation.save();
 
@@ -95,8 +127,8 @@ export const sendMessageService = async (senderId, conversationId, content) => {
     );
     const receiverId = receiverIdObj.toString();
 
-    emitToUser(receiverId, "receiveMessage", populatedMessage);
-    emitToUser(senderId.toString(), "receiveMessage", populatedMessage);
+    emitToUser(receiverId, "receiveMessage", populatedMessage.toJSON());
+    emitToUser(senderId.toString(), "receiveMessage", populatedMessage.toJSON());
 
     // 🔔 Send Real-time Notification to the receiver
     sendNotification({
@@ -159,6 +191,7 @@ export const getConversationMessagesService = async (userId, conversationId, que
         _id: m._id,
         conversation: m.conversationId,
         content: m.content,
+        attachments: m.attachments || [],
         sender: m.sender,
         createdAt: m.createdAt,
         seen: m.readBy && m.readBy.length > 0
