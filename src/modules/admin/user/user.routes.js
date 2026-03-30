@@ -5,7 +5,7 @@ import {
     getUserById,
     createUser,
     updateUserStatus,
-} from "./admin.user.controller.js";
+} from "./user.controller.js";
 
 import { protect, restrictTo } from "../../../middlewares/auth.middleware.js";
 import { validate } from "../../../middlewares/validation.middleware.js";
@@ -13,7 +13,7 @@ import { validate } from "../../../middlewares/validation.middleware.js";
 import {
     createUserSchema,
     updateStatusSchema,
-} from "./validation/admin.user.validation.js";
+} from "./validation/user.validation.js";
 
 const router = Router();
 
