@@ -1,6 +1,6 @@
 import { User } from "../../../DB/models/User.model.js";
 import { createBadRequestError, createNotFoundError } from "../../../utils/appError.js";
-import cloudinary from "../../../config/cloudinary.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../../../utils/cloudinary.js";
 import { comparePassword, hashPassword } from "../../../utils/passHandler.js";
 
 export const getMeService = async (userId) => {
@@ -50,19 +50,22 @@ export const updateAvatarService = async (userId, file) => {
 
     // delete old avatar if exists
     if (user.avatar?.publicId) {
-        await cloudinary.uploader.destroy(user.avatar.publicId);
+        await deleteFromCloudinary(user.avatar.publicId);
     }
 
-    const uploaded = await cloudinary.uploader.upload(file.buffer, {
-        folder: "FoundIt/Users",
-    });
+    console.log(`Uploading avatar for user ${userId} to Cloudinary...`);
+    const uploaded = await uploadToCloudinary(file.buffer, "Users");
+    console.log("Cloudinary upload successful:", uploaded);
 
     user.avatar = {
-        url: uploaded.secure_url,
-        publicId: uploaded.public_id,
+        url: uploaded.url,
+        publicId: uploaded.publicId,
     };
 
+    // Explicitly mark the field as modified for Mongoose
+    user.markModified('avatar');
     await user.save();
+    console.log("User avatar saved to database.");
 
     return user;
 };
