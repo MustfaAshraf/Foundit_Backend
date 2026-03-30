@@ -9,6 +9,7 @@ import adminUserRoutes from "../modules/admin/user/user.routes.js";
 import adminRouter from "../modules/admin/reports/report.routes.js";
 import chatRouter from "../modules/chat/chat.routes.js";
 import adminTransRouter from "../modules/admin/transactions/transactions.routes.js";
+import supportRouter from "../modules/support/support.routes.js";
 
 const routerHandler = async (app, express) => {
   app.use("/api/v1/auth", authRouter);
@@ -22,7 +23,8 @@ const routerHandler = async (app, express) => {
   app.use("/api/v1/admin/transactions", adminTransRouter);
   app.use("/api/v1/admin/communities", communityRouter);
   app.use("/api/v1/admin/reports", adminRouter);
-
+  app.use("/api/v1/support", supportRouter)   
+    // app.use("/api/v1/users", userRouter)
 
   app.use("/{*any}", (req, res) => {
     res.status(404).json({ message: "this Router is not found" });

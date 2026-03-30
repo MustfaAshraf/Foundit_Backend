@@ -17,6 +17,15 @@ const conversationSchema = new mongoose.Schema({
         type: Date, 
         default: Date.now()
     },
+    isSupport: { 
+        type: Boolean, 
+        default: false 
+    },
+    assignedTo: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        default: null 
+    },
     isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
