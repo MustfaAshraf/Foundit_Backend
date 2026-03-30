@@ -2,6 +2,14 @@ import * as adminService from './services/report.service.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
 import { sendSuccessResponse } from '../../../utils/appResponse.js';
 
+// @desc    Get all reports for moderation
+// @route   GET /api/v1/admin/reports
+// @access  Private/Admin
+export const getAllReports = asyncHandler(async (req, res) => {
+    const result = await adminService.getAllReportsService(req.query);
+    return sendSuccessResponse(res, result);
+});
+
 // @desc    Get moderation statistics
 // @route   GET /api/v1/admin/stats
 // @access  Private/Admin

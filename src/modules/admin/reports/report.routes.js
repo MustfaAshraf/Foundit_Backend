@@ -12,6 +12,9 @@ router.use(protect, restrictTo('super_admin', 'community_admin'));
 
 // --- Moderation Endpoints ---
 
+// @desc    Get all reports (with pagination/filtering)
+router.get('/', adminController.getAllReports);
+
 // @desc    Get dashboard metrics (counts)
 router.get('/stats', adminController.getAdminStats);
 

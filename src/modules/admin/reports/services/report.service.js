@@ -1,6 +1,37 @@
 import { Report } from '../../../../DB/models/report.model.js';
 import { sendNotification } from '../../../notification/services/notification.service.js';
 import { createBadRequestError, createNotFoundError } from '../../../../utils/appError.js';
+import { ApiFeatures } from '../../../../utils/apiFeatures.js';
+
+/**
+ * GET ALL REPORTS (ADMIN MODERATION VIEW)
+ * Returns ALL reports regardless of status, with pagination, filtering, and search.
+ */
+export const getAllReportsService = async (query) => {
+    // Build base query — no status filter so admins see everything
+    const baseFilter = {};
+
+    // Allow explicit status filtering via query string (e.g. ?status=OPEN)
+    // but don't enforce one by default
+    const apiFeatures = new ApiFeatures(Report.find(baseFilter), query)
+        .filter()
+        .search()
+        .sort()
+        .limitFields()
+        .paginate();
+
+    const reports = await apiFeatures.mongooseQuery.populate('user', 'name email avatar.url');
+
+    // Total count query (with same filters but no pagination)
+    const countFeatures = new ApiFeatures(Report.find(baseFilter), query).filter().search();
+    const total = await countFeatures.mongooseQuery.countDocuments();
+
+    const page = query.page * 1 || 1;
+    const limit = query.limit * 1 || 10;
+    const totalPages = Math.ceil(total / limit);
+
+    return { reports, total, totalPages };
+};
 
 /**
  * GET ADMIN DASHBOARD STATS
@@ -18,6 +49,9 @@ export const getAdminStatsService = async () => {
         }),
         Report.countDocuments({
             status: 'RESOLVED',
+        }),
+        Report.countDocuments({
+            status: 'MATCHED',
         }),
         Report.countDocuments({
             status: 'MATCHED',
