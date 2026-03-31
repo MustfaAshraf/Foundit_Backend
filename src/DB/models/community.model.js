@@ -21,8 +21,8 @@ const communitySchema = new mongoose.Schema({
     },
     plan: {
         type: String,
-        enum: ['FREE', 'PRO', 'ENTERPRISE'],
-        default: 'FREE'
+        enum: ['PRO', 'ENTERPRISE'],
+        default: 'PRO'
     },
     logo: String,
 
