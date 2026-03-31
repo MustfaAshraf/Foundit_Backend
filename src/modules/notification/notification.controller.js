@@ -19,6 +19,11 @@ export const readAllNotifications = asyncHandler(async (req, res) => {
     sendSuccessResponse(res, result, HTTP_STATUS.OK);
 });
 
+export const getUnreadCount = asyncHandler(async (req, res) => {
+    const result = await notificationService.getUnreadCountService(req.user._id);
+    sendSuccessResponse(res, result, HTTP_STATUS.OK);
+});
+
 // --- SIMULATION ENDPOINT ---
 export const simulateNotification = asyncHandler(async (req, res) => {
     // Call the helper without the invalid matchId string

@@ -22,6 +22,13 @@ router.patch(
     notificationController.readAllNotifications
 );
 
+// GET /api/v1/notifications/unread-count
+// ⚠️ IMPORTANT: Put this BEFORE the /:id route so Express doesn't think "unread-count" is an ID!
+router.get(
+    '/unread-count',
+    notificationController.getUnreadCount
+);
+
 // PATCH /api/v1/notifications/:id/read
 router.patch(
     '/:id/read', 
