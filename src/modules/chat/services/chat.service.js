@@ -5,6 +5,7 @@ import { emitToUser } from './socketEmitter.js';
 import { sendNotification } from '../../notification/services/notification.service.js';
 import { createNotFoundError, createBadRequestError, createForbiddenError } from '../../../utils/appError.js';
 import { uploadToCloudinary } from '../../../utils/cloudinary.js';
+import { ReputationService } from '../../user/services/reputation.service.js';
 
 export const createConversationService = async (userAId, userBId) => {
     if (!userBId) {
@@ -138,6 +139,11 @@ export const sendMessageService = async (senderId, conversationId, content, file
         message: content,
         data: { conversationId: conversationId.toString() }
     }).catch(err => console.error("Message Notification failed:", err.message));
+    
+    // 🎁 REPUTATION: Add chat activity point (with daily cap)
+    await ReputationService.addChatActivity(senderId).catch(err => 
+        console.error("Chat Reputation Error:", err.message)
+    );
 
     return populatedMessage;
 };

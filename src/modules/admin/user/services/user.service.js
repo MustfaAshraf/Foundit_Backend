@@ -60,12 +60,18 @@ export const updateUserStatusService = async (id, status) => {
         throw createNotFoundError("User not found");
     }
 
-    user.status = status;
-
-    // 🚨 FORCE LOGOUT
+    // Rule: if admin bans user, reduce trustScore by 150 (can go below -150)
     if (status === "banned") {
+        user.trustScore = Math.min(user.trustScore - 150, -150);
         user.refreshToken = [];
     }
+
+    // Rule: if admin unbans user, set trustScore back to 0
+    if (status === "active" && user.status === "banned") {
+        user.trustScore = 0;
+    }
+
+    user.status = status;
 
     await user.save();
 
