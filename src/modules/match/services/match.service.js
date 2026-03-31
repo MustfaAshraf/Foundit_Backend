@@ -9,6 +9,7 @@ import {
 } from "./../../../utils/appError.js";
 import { sendNotification } from '../../notification/services/notification.service.js';
 import { createConversationService } from "../../chat/services/chat.service.js";
+import { ReputationService } from "../../user/services/reputation.service.js";
 
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (coords1, coords2) => {
@@ -377,6 +378,18 @@ export const resolveMatch = async (matchId, userId) => {
 
     if (match.status !== 'ACCEPTED') {
         throw createBadRequestError('Match cannot be resolved unless it is fully ACCEPTED by both parties.');
+    }
+
+    // 🎁 REPUTATION: Reward the users for successfully resolving the match
+    const userLost = match.lostReport.report?.user;
+    const userFound = match.foundReport.report?.user;
+
+    if (userLost) {
+        await ReputationService.addActivity(userLost, 5);
+    }
+    if (userFound) {
+        await ReputationService.addTrust(userFound, 100, "Trusted Finder");
+        await ReputationService.addActivity(userFound, 10);
     }
 
     match.status = 'VERIFIED';

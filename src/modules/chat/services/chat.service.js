@@ -5,6 +5,7 @@ import { emitToUser } from './socketEmitter.js';
 import { sendNotification } from '../../notification/services/notification.service.js';
 import { createNotFoundError, createBadRequestError, createForbiddenError } from '../../../utils/appError.js';
 import { uploadToCloudinary } from '../../../utils/cloudinary.js';
+import { ReputationService } from '../../user/services/reputation.service.js';
 
 export const createConversationService = async (userAId, userBId) => {
     if (!userBId) {
@@ -67,12 +68,13 @@ export const getUserConversationsService = async (userId) => {
 
         return {
             _id: conv._id,
-            otherUser: otherUser || (conv.participants.length > 0 ? conv.participants[0] : null),
+            otherUser: otherUser || null,
             lastMessage: conv.lastMessage || "",
             updatedAt: conv.lastMessageAt || conv.createdAt,
             isSupport: conv.isSupport,
             assignedTo: conv.assignedTo,
         };
+
     });
 };
 
@@ -125,22 +127,69 @@ export const sendMessageService = async (senderId, conversationId, content, file
     const receiverIdObj = conversation.participants.find(
         (p) => p.toString() !== senderId.toString()
     );
-    const receiverId = receiverIdObj.toString();
 
-    emitToUser(receiverId, "receiveMessage", populatedMessage.toJSON());
+    if (receiverIdObj) {
+        const receiverId = receiverIdObj.toString();
+        
+        // Enrich payload for support chats so sidebar updates correctly
+        const payload = populatedMessage.toJSON();
+        if (conversation.isSupport) {
+            payload.conversationId = {
+                _id: conversation._id,
+                isSupport: true,
+                assignedTo: conversation.assignedTo,
+                participants: conversation.participants
+            };
+        }
+
+        emitToUser(receiverId, "receiveMessage", payload);
+ 
+        // 🔔 Send Real-time Notification to the receiver
+        sendNotification({
+            recipientId: receiverId,
+            category: 'MESSAGE',
+            title: `New Message from ${populatedMessage.sender.name}`,
+            message: content,
+            data: { conversationId: conversationId.toString() }
+        }).catch(err => console.error("Message Notification failed:", err.message));
+        
+        // 🎁 REPUTATION: Add chat activity point (with daily cap)
+        ReputationService.addChatActivity(senderId).catch(err => 
+            console.error("Chat Reputation Error:", err.message)
+        );
+    } else if (conversation.isSupport && !conversation.assignedTo) {
+
+        // 🆘 Unassigned Support Case: notify all Admins
+        const admins = await User.find({ role: { $in: ['super_admin'] } }).select('_id');
+        const adminIds = admins.map(a => a._id.toString());
+        
+        adminIds.forEach(adminId => {
+            emitToUser(adminId, "receiveMessage", {
+                ...populatedMessage.toJSON(),
+                conversationId: {
+                    _id: conversation._id,
+                    isSupport: true,
+                    assignedTo: null,
+                    participants: conversation.participants
+                }
+            });
+
+            sendNotification({
+                recipientId: adminId,
+                category: 'SUPPORT',
+                title: 'Unassigned Ticket: New Message',
+                message: `[Action Required] New message from ${populatedMessage.sender.name} in an unassigned ticket.`,
+                data: { conversationId: conversation._id.toString() }
+            }).catch(err => console.error(`Unassigned Support Notification failed for ${adminId}:`, err.message));
+        });
+    }
+
+    // Always notify the sender
     emitToUser(senderId.toString(), "receiveMessage", populatedMessage.toJSON());
-
-    // 🔔 Send Real-time Notification to the receiver
-    sendNotification({
-        recipientId: receiverId,
-        category: 'MESSAGE',
-        title: `New Message from ${populatedMessage.sender.name}`,
-        message: content,
-        data: { conversationId: conversationId.toString() }
-    }).catch(err => console.error("Message Notification failed:", err.message));
 
     return populatedMessage;
 };
+
 
 export const getConversationMessagesService = async (userId, conversationId, query) => {
     const conversation = await Conversation.findById(conversationId);

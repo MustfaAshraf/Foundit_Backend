@@ -1,8 +1,10 @@
 import { Report } from '../../../DB/models/report.model.js';
 import { User } from '../../../DB/models/user.model.js';
+import { Match } from '../../../DB/models/match.model.js';
 import { ApiFeatures } from '../../../utils/apiFeatures.js';
 import { createNotFoundError, createForbiddenError, createBadRequestError } from '../../../utils/appError.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../../utils/cloudinary.js';
+import { ReputationService } from '../../user/services/reputation.service.js';
 import * as matchController from "../../match/match.controller.js" 
 import * as matchService from "../../match/services/match.service.js" 
 
@@ -100,8 +102,15 @@ export const createReportService = async (bodyData, files, userId) => {
     // 4. Actively Deduct Metric Quota Globally (Only for regular users)
     if (!isAdmin) {
         user.credits = currentCredits - 1;
-    
         await user.save();
+    
+        // 🎁 REPUTATION: Post Activity Bonus (+10)
+        await ReputationService.addActivity(userId, 10);
+        
+        // 🎁 REPUTATION: Image Activity Bonus (+5)
+        if (images.length > 1) {
+            await ReputationService.addActivity(userId, 5);
+        }
     }
 
     // used to run match in background
@@ -126,7 +135,7 @@ export const getReportsService = async (query) => {
         .paginate();
 
     // 👇 FIX: Changed 'profileImage' to 'avatar.url' to match your User Model!
-    const reports = await apiFeatures.mongooseQuery.populate('user', 'name avatar.url');
+    const reports = await apiFeatures.mongooseQuery.populate('user', 'name avatar.url badges isVerified');
 
     const totalQuery = new ApiFeatures(Report.find(), query).filter().mongooseQuery;
     const total = await totalQuery.countDocuments();
@@ -136,7 +145,7 @@ export const getReportsService = async (query) => {
 
 export const getReportByIdService = async (reportId) => {
     // FIX: Changed 'profileImage' to 'avatar.url'
-    const report = await Report.findById(reportId).populate('user', 'name avatar.url email');
+    const report = await Report.findById(reportId).populate('user', 'name avatar.url email badges isVerified');
 
     if (!report) throw createNotFoundError('Report not found');
 
@@ -172,8 +181,16 @@ export const deleteReportService = async (reportId, user) => {
         });
     }
 
-    // 4. Delete the document from MongoDB
-    await report.deleteOne();
+    // 4. Delete the document and its matches from MongoDB
+    await Promise.all([
+        report.deleteOne(),
+        Match.deleteMany({
+            $or: [
+                { "lostReport.report": reportId },
+                { "foundReport.report": reportId }
+            ]
+        })
+    ]);
 
     // 5. Fetch and return the updated reports for the user (to refresh the frontend automatically)
     const updatedData = await getUserReportsService(user._id, {});

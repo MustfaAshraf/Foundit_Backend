@@ -19,6 +19,7 @@ import { encrypt, decrypt } from '../../../utils/encryption.js';
 import { hashPassword, comparePassword } from '../../../utils/passHandler.js';
 import { sendEmail } from '../../../utils/mailer.js';
 import { config } from '../../../config/env.js';
+import { ReputationService } from '../../user/services/reputation.service.js';
 
 // ==========================
 // 1. REGISTER
@@ -80,16 +81,28 @@ export const loginService = async ({ email, password }) => {
 
     // 🛑 BLOCK UNVERIFIED USERS
     if (!user.isVerified) {
-        // Send a specific error so the frontend knows to redirect to the OTP page
         throw createForbiddenError('Please verify your email before logging in. We sent an OTP to your email.');
     }
 
-    const accessToken = generateAccessToken({ id: user._id, email: user.email, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user._id, email: user.email, role: user.role });
+    // 🛑 BLOCK BANNED USERS
+    if (user.status === 'banned') {
+        throw createForbiddenError('Your account has been banned. Please contact support.');
+    }
+
+    // Update activity score (+1) and handle daily reward logic when user logs in
+    let updatedUser = await ReputationService.addActivity(user._id, 1);
+    if (!updatedUser) {
+        // fallback to daily login handler if addActivity does not return updated user
+        await ReputationService.handleDailyLogin(user);
+        updatedUser = await User.findById(user._id);
+    }
+
+    const accessToken = generateAccessToken({ id: updatedUser._id, email: updatedUser.email, role: updatedUser.role });
+    const refreshToken = generateRefreshToken({ id: updatedUser._id, email: updatedUser.email, role: updatedUser.role });
 
     const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    user.refreshToken.push({ token: refreshToken, expireAt });
-    await user.save();
+    updatedUser.refreshToken.push({ token: refreshToken, expireAt });
+    await updatedUser.save();
 
     user.password = undefined;
 
@@ -312,6 +325,9 @@ export const googleLoginService = async (googleAccessToken) => {
         });
 
         isNewUser = true;
+
+        // 🎁 REPUTATION: Google Registry Trust Bonus (+20)
+        await ReputationService.addTrust(user._id, 40);
     } 
     // 4. EDGE CASE FIX: If they existed but were NOT verified, Google just verified them!
     else if (!user.isVerified) {
@@ -326,17 +342,30 @@ export const googleLoginService = async (googleAccessToken) => {
         await user.save();
     }
 
-    // 5. Generate App Tokens
-    const accessToken = generateAccessToken({ id: user._id, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user._id, role: user.role });
+    // 🛑 BLOCK BANNED USERS
+    if (user.status === 'banned') {
+        throw createForbiddenError('Your account has been banned. Please contact support.');
+    }
 
-    // 6. Save Refresh Token to DB
+    // 5. Update activity score (+1) and handle daily reward logic when user logs in
+    let updatedUser = await ReputationService.addActivity(user._id, 1);
+    if (!updatedUser) {
+        await ReputationService.handleDailyLogin(user);
+        updatedUser = await User.findById(user._id);
+    }
+
+    // 6. Generate App Tokens
+    const accessToken = generateAccessToken({ id: updatedUser._id, role: updatedUser.role });
+    const refreshToken = generateRefreshToken({ id: updatedUser._id, role: updatedUser.role });
+
+    // 7. Save Refresh Token to DB
     const expireAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 Days
-    user.refreshToken.push({ token: refreshToken, expireAt });
-    user.lastLoginAt = new Date();
-    await user.save();
+    updatedUser.refreshToken.push({ token: refreshToken, expireAt });
+    updatedUser.lastLoginAt = new Date();
+    await updatedUser.save();
 
-    const userObj = user.toObject();
+
+    const userObj = updatedUser.toObject ? updatedUser.toObject() : updatedUser.toObject();
     userObj.isNewUser = isNewUser;
 
     return {

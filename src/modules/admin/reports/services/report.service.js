@@ -2,6 +2,7 @@ import { Report } from '../../../../DB/models/report.model.js';
 import { sendNotification } from '../../../notification/services/notification.service.js';
 import { createBadRequestError, createNotFoundError } from '../../../../utils/appError.js';
 import { ApiFeatures } from '../../../../utils/apiFeatures.js';
+import { ReputationService } from '../../../user/services/reputation.service.js';
 
 /**
  * GET ALL REPORTS (ADMIN MODERATION VIEW)
@@ -90,6 +91,19 @@ export const updateReportStatusService = async (reportId, status) => {
 
     if (!report) {
         throw createNotFoundError('Report not found');
+    }
+
+    // 🎁 REPUTATION: The "Found" Success (The Hero Action)
+    if (status === 'RESOLVED' && report.type === 'FOUND') {
+        const user = report.user;
+        user.trustScore += 100;
+        user.activityScore += 50;
+        
+        if (!user.badges.includes("Community Hero")) {
+            user.badges.push("Community Hero");
+        }
+        
+        await user.save();
     }
 
     // 3. System Notification on Rejection
