@@ -11,6 +11,7 @@ import chatRouter from "../modules/chat/chat.routes.js";
 import adminTransRouter from "../modules/admin/transactions/transactions.routes.js";
 import supportRouter from "../modules/support/support.routes.js";
 import broadcastsRouter from "../modules/admin/broadcasts/broadcast.routes.js";
+import dashboardRouter from "../modules/admin/dashboard/dashboard.routes.js";
 
 const routerHandler = async (app, express) => {
   app.use("/api/v1/auth", authRouter);
@@ -26,6 +27,7 @@ const routerHandler = async (app, express) => {
   app.use("/api/v1/admin/reports", adminRouter);
   app.use("/api/v1/support", supportRouter);
   app.use("/api/v1/admin/broadcasts", broadcastsRouter);
+  app.use("/api/v1/admin/dashboard", dashboardRouter);   
     // app.use("/api/v1/users", userRouter)
 
   app.use("/{*any}", (req, res) => {
