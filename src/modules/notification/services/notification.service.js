@@ -67,25 +67,38 @@ export const markAllAsReadService = async (userId) => {
 };
 
 // ==========================
-// 4. THE INTERNAL HELPER (For other modules to use)
+// 5. GET UNREAD COUNT
+// ==========================
+export const getUnreadCountService = async (userId) => {
+    const unreadCount = await Notification.countDocuments({ recipient: userId, isRead: false });
+    return { unreadCount };
+};
+
+// ==========================
+// 6. THE INTERNAL HELPER (For other modules to use)
 // ==========================
 export const sendNotification = async ({ recipientId, category, title, message, data }) => {
-    // A. Save to MongoDB
-    const newNotification = await Notification.create({
-        recipient: recipientId,
-        category,
-        title,
-        message,
-        data
-    });
-
-    // B. Emit via Socket.io using the new Chat Infrastructure!
     try {
-        // 👇 2. Use emitToUser instead of io.to()
-        emitToUser(recipientId.toString(), 'new_notification', newNotification);
-    } catch (error) {
-        console.error("Socket emission failed, but notification saved to DB:", error.message);
-    }
+        console.log(`[Notification] Creating notification for user ${recipientId}: ${title}`);
 
-    return newNotification;
+        // A. Save to MongoDB
+        const newNotification = await Notification.create({
+            recipient: recipientId,
+            category,
+            title,
+            message,
+            data
+        });
+
+        console.log(`[Notification] ✅ Saved to DB with ID: ${newNotification._id} for user ${recipientId}`);
+
+        // B. Emit via Socket.io using the new Chat Infrastructure!
+        emitToUser(recipientId.toString(), 'new_notification', newNotification);
+        console.log(`[Notification] 📡 Emitted socket event to user ${recipientId}`);
+
+        return newNotification;
+    } catch (error) {
+        console.error(`[Notification] ❌ Failed to send notification to user ${recipientId}:`, error.message);
+        throw error; // Re-throw so Promise.allSettled catches it
+    }
 };
