@@ -31,7 +31,7 @@ export const createCheckoutSessionService = async (user, amount, plan) => {
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
-        success_url: `${config.FRONTEND_URL}/payment/success`,
+        success_url: `${config.FRONTEND_URL}/profile`,
         cancel_url: `${config.FRONTEND_URL}/payment/cancel`,
         client_reference_id: user._id.toString(),
         customer_email: user.email,
@@ -51,6 +51,17 @@ export const createCheckoutSessionService = async (user, amount, plan) => {
             userId: user._id.toString(),
             credits: creditsToAdd
         }
+    });
+
+    // 3. Create PENDING transaction in DB
+    await Transaction.create({
+        user: user._id,
+        amount: finalAmount,
+        currency: 'EGP',
+        type: 'CREDIT_REFILL',
+        creditsAdded: creditsToAdd,
+        stripePaymentId: session.id, // We store session ID to link it when we handle the webhook later
+        status: 'SUCCESS'
     });
 
     return session;
@@ -73,29 +84,25 @@ export const handleWebhookService = async (rawBody, signature) => {
 
         const userId = session.client_reference_id || session.metadata?.userId;
         const credits = Number(session.metadata?.credits) || 0;
-        const amount = session.amount_total / 100;
-        const currency = session.currency;
         const stripePaymentId = session.id;
 
         if (!userId) {
             throw createBadRequestError('Webhook Error: Missing userId in session');
         }
 
-        // Increment user credits
+        // 1. Increment user credits
         await User.findByIdAndUpdate(userId, {
             $inc: { credits: credits }
         });
 
-        // Create transaction history
-        await Transaction.create({
-            user: userId,
-            amount: amount,
-            currency: currency.toUpperCase(),
-            type: 'CREDIT_REFILL',
-            creditsAdded: credits,
-            stripePaymentId: stripePaymentId,
-            status: 'SUCCESS'
-        });
+        // 2. Update existing PENDING transaction to SUCCESS
+        await Transaction.findOneAndUpdate(
+            { stripePaymentId: stripePaymentId },
+            {
+                status: 'SUCCESS',
+            },
+            { new: true, runValidators: true }
+        );
     }
 
     return true;
