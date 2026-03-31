@@ -13,15 +13,79 @@ export const fetchAllTransactions = async (page = 1, limit = 10) => {
 };
 
 export const fetchTransactionStats = async () => {
+    const now = new Date();
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
     const stats = await Transaction.aggregate([
-        { $match: { status: 'SUCCESS' } },
         {
-            $group: {
-                _id: null,
-                totalRevenue: { $sum: '$amount' },
-                totalTransactions: { $sum: 1 }
+            $facet: {
+                currentMonth: [
+                    { 
+                        $match: { 
+                            status: 'SUCCESS',
+                            createdAt: { $gte: startOfCurrentMonth }
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: { $sum: '$amount' },
+                            count: { $sum: 1 }
+                        }
+                    }
+                ],
+                previousMonth: [
+                    { 
+                        $match: { 
+                            status: 'SUCCESS',
+                            createdAt: { $gte: startOfPreviousMonth, $lte: endOfPreviousMonth }
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: { $sum: '$amount' }
+                        }
+                    }
+                ],
+                allTime: [
+                    { $match: { status: 'SUCCESS' } },
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: { $sum: '$amount' },
+                            totalTransactions: { $sum: 1 }
+                        }
+                    }
+                ]
             }
         }
     ]);
-    return stats[0] || { totalRevenue: 0, totalTransactions: 0 };
-};
+
+    const currentMonthData = stats[0].currentMonth[0] || { totalRevenue: 0, count: 0 };
+    const previousMonthData = stats[0].previousMonth[0] || { totalRevenue: 0 };
+    const allTimeData = stats[0].allTime[0] || { totalRevenue: 0, totalTransactions: 0 };
+
+    // Calculate Growth Percentage
+    let revenueGrowthPercentage = 0;
+    if (previousMonthData.totalRevenue > 0) {
+        revenueGrowthPercentage = ((currentMonthData.totalRevenue - previousMonthData.totalRevenue) / previousMonthData.totalRevenue) * 100;
+    } else if (currentMonthData.totalRevenue > 0) {
+        revenueGrowthPercentage = 100;
+    }
+
+    // Daily average based on current month
+    const daysInMonth = now.getDate();
+    const dailyAverage = (currentMonthData.count / daysInMonth).toFixed(1);
+
+    return {
+        totalRevenue: allTimeData.totalRevenue,
+        totalRevenueThisMonth: currentMonthData.totalRevenue,
+        revenueGrowthPercentage: Math.round(revenueGrowthPercentage),
+        successfulTransactionsCount: allTimeData.totalTransactions,
+        currentMonthTransactionsCount: currentMonthData.count,
+        dailyAverage: Number(dailyAverage)
+    };
+};
