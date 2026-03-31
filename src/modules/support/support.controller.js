@@ -5,6 +5,7 @@ import { Conversation } from "../../DB/models/conversation.model.js";
 import { Message } from "../../DB/models/message.model.js";
 import { createNotFoundError } from "../../utils/appError.js";
 import { emitToUser } from "../chat/services/socketEmitter.js";
+import { sendNotification } from "../notification/services/notification.service.js";
 
 /**
  * Open a new support ticket (Conversation).
@@ -15,20 +16,20 @@ export const openSupportTicket = asyncHandler(async (req, res, next) => {
     const { message: content } = req.body;
     const userId = req.user._id;
 
-    // 1. Check for an existing UNASSIGNED support conversation for this user
+    // 1. Check for an existing ACTIVE support conversation for this user
     let conversation = await Conversation.findOne({
         participants: userId,
         isSupport: true,
-        assignedTo: null
-    });
+        isActive: true
+    }).populate("assignedTo", "name email");
 
     if (!conversation) {
         // Create new UNASSIGNED support conversation
-        // Initially, just the user is a participant. Admins will join when they claim.
         conversation = await Conversation.create({
             participants: [userId],
             isSupport: true,
-            assignedTo: null
+            assignedTo: null,
+            isActive: true
         });
     }
 
@@ -47,34 +48,70 @@ export const openSupportTicket = asyncHandler(async (req, res, next) => {
 
     // 4. Emit Real-time notifications
     const populatedMessage = await newMessage.populate("sender", "name email profileImage");
+    const isAssigned = !!conversation.assignedTo;
     
-    // Find all online admins to notify them of the new unassigned ticket
-    const admins = await User.find({ role: { $in: ['super_admin'] } }).select('_id');
-    const adminIds = admins.map(a => a._id.toString());
-    
-    // Notify the User
-    emitToUser(userId.toString(), "receiveMessage", populatedMessage);
-    
-    // Notify all Admins (including those not yet in the conversation)
-    adminIds.forEach(adminId => {
+    // Notification Metadata helper
+    const getConvMetadata = () => ({
+        _id: conversation._id,
+        isSupport: true,
+        assignedTo: conversation.assignedTo,
+        participants: conversation.participants
+    });
+
+    // Notify the User via Socket
+    emitToUser(userId.toString(), "receiveMessage", {
+        ...populatedMessage.toObject(),
+        conversationId: getConvMetadata()
+    });
+
+    if (isAssigned) {
+        // CASE A: Reusing an already assigned ticket -> ONLY notify the assigned Admin
+        const adminId = conversation.assignedTo._id.toString();
+        
         emitToUser(adminId, "receiveMessage", {
             ...populatedMessage.toObject(),
-            conversationId: {
-                _id: conversation._id,
-                isSupport: true,
-                assignedTo: null,
-                participants: conversation.participants
-            }
+            conversationId: getConvMetadata()
         });
-    });
+
+        sendNotification({
+            recipientId: adminId,
+            category: 'SUPPORT',
+            title: 'Support Ticket Update',
+            message: `${req.user.name} sent a new message in their support ticket.`,
+            data: { conversationId: conversation._id.toString() }
+        }).catch(err => console.error(`Failed to notify assigned admin ${adminId}:`, err.message));
+
+    } else {
+        // CASE B: Unassigned ticket -> Notify ALL Admins
+        const admins = await User.find({ role: { $in: ['super_admin'] } }).select('_id');
+        const adminIds = admins.map(a => a._id.toString());
+
+        adminIds.forEach(adminId => {
+            emitToUser(adminId, "receiveMessage", {
+                ...populatedMessage.toObject(),
+                conversationId: getConvMetadata()
+            });
+
+            sendNotification({
+                recipientId: adminId,
+                category: 'SUPPORT',
+                title: 'New Support Ticket',
+                message: `${req.user.name} sent a new support request: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+                data: { conversationId: conversation._id.toString() }
+            }).catch(err => console.error(`Failed to notify admin ${adminId}:`, err.message));
+        });
+    }
 
     // 5. Return the conversation
     const conversationData = await Conversation.findById(conversation._id).populate("participants", "name email profileImage");
 
     return sendSuccessResponse(res, {
         ...conversationData.toObject(),
-        conversationId: conversationData._id
+        otherUser: conversation.assignedTo || null,
+        isSupport: true
     }, 201);
+
+
 });
 
 /**
@@ -118,5 +155,20 @@ export const claimTicket = asyncHandler(async (req, res, next) => {
         });
     });
 
+    // 3. Notify the user that their ticket was claimed
+    // The user should be one of the participants who is NOT an admin or not this admin
+    // In our design, participants[0] is usually the user who opened the ticket
+    const userToNotify = conversation.participants.find(p => p._id.toString() !== adminId.toString());
+    if (userToNotify) {
+        sendNotification({
+            recipientId: userToNotify._id,
+            category: 'SUPPORT',
+            title: 'Support Ticket Claimed',
+            message: `Admin ${req.user.name} has joined your support request and will help you shortly.`,
+            data: { conversationId: conversation._id.toString() }
+        }).catch(err => console.error(`Failed to notify user ${userToNotify._id}:`, err.message));
+    }
+
     return sendSuccessResponse(res, conversation, 200);
 });
+
