@@ -143,20 +143,7 @@ export const sendMessageService = async (senderId, conversationId, content, file
         }
 
         emitToUser(receiverId, "receiveMessage", payload);
-
-    // 🔔 Send Real-time Notification to the receiver
-    sendNotification({
-        recipientId: receiverId,
-        category: 'MESSAGE',
-        title: `New Message from ${populatedMessage.sender.name}`,
-        message: content,
-        data: { conversationId: conversationId.toString() }
-    }).catch(err => console.error("Message Notification failed:", err.message));
-    
-    // 🎁 REPUTATION: Add chat activity point (with daily cap)
-    await ReputationService.addChatActivity(senderId).catch(err => 
-        console.error("Chat Reputation Error:", err.message)
-    );
+ 
         // 🔔 Send Real-time Notification to the receiver
         sendNotification({
             recipientId: receiverId,
@@ -165,6 +152,11 @@ export const sendMessageService = async (senderId, conversationId, content, file
             message: content,
             data: { conversationId: conversationId.toString() }
         }).catch(err => console.error("Message Notification failed:", err.message));
+        
+        // 🎁 REPUTATION: Add chat activity point (with daily cap)
+        ReputationService.addChatActivity(senderId).catch(err => 
+            console.error("Chat Reputation Error:", err.message)
+        );
     } else if (conversation.isSupport && !conversation.assignedTo) {
 
         // 🆘 Unassigned Support Case: notify all Admins
