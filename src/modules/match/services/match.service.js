@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Report } from "../../../DB/models/report.model.js";
 import { Match } from "./../../../DB/models/match.model.js";
 import { Conversation } from "./../../../DB/models/conversation.model.js";
@@ -414,23 +415,37 @@ export const getAllMatches = async (filters = {}) => {
 // 5. Get user Matches 
 // ==========================
 export const getUserMatches = async (userId) => {
-    const matches = await Match.find().populate([
+    const matches = await Match.find(
+      {
+        $or: [
+          { 'lostReport.report': { $exists: true } },
+          { 'foundReport.report': { $exists: true } }
+        ]
+      }
+    ).sort({ createdAt: -1 }).populate([
         { 
             path: 'lostReport.report', 
-            model: 'Report'
+            model: 'Report',
+            populate: { path: 'user' } 
         },
         { 
             path: 'foundReport.report', 
-            model: 'Report'
+            model: 'Report',
+            populate: { path: 'user' }
         }
     ]);
 
     const userMatches = matches.filter(match => {
-        const isLostOwner = match.lostReport.report?.user.toString() === userId.toString();
-        const isFoundOwner = match.foundReport.report?.user.toString() === userId.toString();
+        // Access _id if the user is populated, otherwise it's already an ID
+        const lostUserId = match.lostReport?.report?.user?._id || match.lostReport?.report?.user;
+        const foundUserId = match.foundReport?.report?.user?._id || match.foundReport?.report?.user;
+
+        const isLostOwner = lostUserId?.toString() === userId.toString();
+        const isFoundOwner = foundUserId?.toString() === userId.toString();
+        
         return isLostOwner || isFoundOwner;
     });
-    if(userMatches.length ===0) return [];
+    if(userMatches.length === 0) return [];
 
     // Add hasChat logic: check if there's an active conversation between the two users
     const enhancedMatches = await Promise.all(userMatches.map(async (match) => {
