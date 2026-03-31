@@ -5,6 +5,7 @@ import {
     getUserById,
     createUser,
     updateUserStatus,
+    manuallyBanUser,
 } from "./user.controller.js";
 
 import { protect, restrictTo } from "../../../middlewares/auth.middleware.js";
@@ -26,5 +27,6 @@ router.get("/:id", getUserById);
 router.post("/", validate(createUserSchema), createUser);
 
 router.patch("/:id/status", validate(updateStatusSchema), updateUserStatus);
+router.patch("/:id/ban", manuallyBanUser);
 
 export default router;

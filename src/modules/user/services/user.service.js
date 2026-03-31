@@ -1,4 +1,4 @@
-import { User } from "../../../DB/models/User.model.js";
+import { User } from "../../../DB/models/user.model.js";
 import { createBadRequestError, createNotFoundError } from "../../../utils/appError.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../../utils/cloudinary.js";
 import { comparePassword, hashPassword } from "../../../utils/passHandler.js";

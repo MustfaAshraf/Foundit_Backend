@@ -46,13 +46,24 @@ const userSchema = new mongoose.Schema({
     // --- Gamification (Trust System) ---
     trustScore: {
         type: Number,
-        default: 100
+        default: 0
     },
     activityScore: {
         type: Number,
         default: 0
     },
-    badges: [{ type: String }], // e.g. ["Trusted Finder"]
+    lastActivityRewardThreshold: {
+        type: Number,
+        default: 0
+    },
+    lastDailyLogin: {
+        type: Date
+    },
+    badges: [{ type: String }], // e.g. ["Trusted Finder", "Verified Identity"]
+    
+    // --- Chat Activity Caps ---
+    lastChatDate: { type: Date },
+    dailyChatPoints: { type: Number, default: 0 },
 
     // --- Auth & Security ---
     isVerified: {
@@ -74,7 +85,7 @@ const userSchema = new mongoose.Schema({
     },
     socialProvider: {
         type: String,
-        enum: ['google', 'facebook', 'email'],
+        enum: ['google', 'email'],
         default: 'email'
     },
     refreshToken: [
@@ -90,6 +101,25 @@ const userSchema = new mongoose.Schema({
     lastLoginAt: Date
 }, {
     timestamps: true
+});
+
+// --- REPUTATION MIDDLEWARE ---
+userSchema.pre('save', async function () {
+    // Only handle critical, low-level state transitions here. 
+    // Business rewards (credits) are moved to ReputationService.
+
+    // 1. Badge Assignments (Fallback/Safety)
+    if (this.trustScore >= 200 && !this.badges.includes("Trusted Finder")) {
+        this.badges.push("Trusted Finder");
+    }
+    if (this.trustScore >= 500 && !this.badges.includes("Elite Guardian")) {
+        this.badges.push("Elite Guardian");
+    }
+
+    // 2. Penalty Logic: Banning
+    if (this.trustScore < -150 && this.status !== 'banned') {
+        this.status = 'banned';
+    }
 });
 
 export const User = mongoose.models.User || mongoose.model('User', userSchema);

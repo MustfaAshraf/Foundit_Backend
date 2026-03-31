@@ -8,6 +8,25 @@ import {
     updateUserStatusService,
 } from "./services/user.service.js";
 
+// ================= ADMIN BAN =================
+export const manuallyBanUser = asyncHandler(async (req, res) => {
+    const user = await getUserByIdService(req.params.id);
+
+    if (!user) {
+        return sendSuccessResponse(res, { message: "User not found" }, 404);
+    }
+
+    if (user.trustScore < -10 && req.query.confirm !== "true") {
+        return sendSuccessResponse(res, {
+            user: { id: user._id, trustScore: user.trustScore, status: user.status },
+            warning: "User trustScore is below -10. Please confirm ban with ?confirm=true before proceeding.",
+        }, 200);
+    }
+
+    const bannedUser = await updateUserStatusService(req.params.id, "banned");
+    return sendSuccessResponse(res, { user: bannedUser, message: "User has been manually banned." }, 200);
+});
+
 // ================= GET ALL =================
 export const getAllUsers = asyncHandler(async (req, res) => {
     const data = await getAllUsersService(req.query);
