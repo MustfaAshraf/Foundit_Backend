@@ -31,6 +31,11 @@ export const protect = asyncHandler(async (req, res, next) => {
         }
     }
 
+    // 5. Check if user is banned
+    if (currentUser.status === 'banned') {
+        return next(createForbiddenError('Your account has been banned. Please contact support.'));
+    }
+
     // GRANT ACCESS TO PROTECTED ROUTE
     req.user = currentUser;
     next();
