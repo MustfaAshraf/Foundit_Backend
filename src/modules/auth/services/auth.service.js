@@ -81,7 +81,26 @@ export const loginService = async ({ email, password }) => {
 
     // 🛑 BLOCK UNVERIFIED USERS
     if (!user.isVerified) {
-        throw createForbiddenError('Please verify your email before logging in. We sent an OTP to your email.');
+        // 🔥 AUTO-SEND NEW OTP ON FAILED LOGIN
+        const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = encrypt(newOtpCode);
+        user.otpExpires = Date.now() + 10 * 60 * 1000;
+        await user.save();
+
+        const message = `
+            <h2>FoundIt - New Verification Code</h2>
+            <p>You tried to log in but your account isn't verified yet.</p>
+            <p>Your new verification code is: <strong style="font-size: 24px; color: #1d63ed;">${newOtpCode}</strong></p>
+            <p>This code will expire in 10 minutes.</p>
+        `;
+
+        await sendEmail({
+            email: user.email,
+            subject: 'FoundIt - Verify Your Account',
+            html: message
+        });
+
+        throw createForbiddenError('Please verify your email before logging in. We just sent a fresh code to your email.');
     }
 
     // 🛑 BLOCK BANNED USERS
