@@ -9,12 +9,8 @@ const storage = multer.memoryStorage();
 const fileFilter = (req, file, cb) => {
     const fileExtension = path.extname(file.originalname).substring(1).toLowerCase();
 
-<<<<<<< Updated upstream
-    if (file.fieldname === 'profileImage' || file.fieldname === 'courseImage') {
-=======
     // 2. Updated for FoundIt Fields (avatar for users, images for reports, attachments for chat)
     if (file.fieldname === 'avatar' || file.fieldname === 'images' || file.fieldname === 'attachments') {
->>>>>>> Stashed changes
         if (!config.UPLOAD.ALLOWED_IMAGE_TYPES.includes(fileExtension)) {
             cb(createBadRequestError('Invalid image type. Allowed: jpg, jpeg, png, webp'));
         } else {
