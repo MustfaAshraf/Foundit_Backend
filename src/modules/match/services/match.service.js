@@ -44,7 +44,7 @@ export const findMatches = async (reportId) => {
     );
     
   const inverseType = report.type === "FOUND" ? "LOST" : "FOUND";
-  const allowedDistance = 50000; // 50 km boundary
+  const allowedDistance = 20000; // 20 km boundary
   const category = report.category;
   const subCategory = report.subCategory; // Hard constraint
 
@@ -85,14 +85,14 @@ export const findMatches = async (reportId) => {
     let locationScore = 0;
     if (distanceMeters <= 5000) {       
       locationScore = 25;
-    } else if (distanceMeters <= 20000) {   
+    } else if (distanceMeters <= 10000) {   
       locationScore = 18;
-    } else if (distanceMeters <= 30000) {   
+    } else if (distanceMeters <= 15000) {   
       locationScore = 10;
-    } else if (distanceMeters <= 40000) {                             
+    } else if (distanceMeters <= 20000) {                             
       locationScore = 5;
     }else{
-      locationScore = 2;
+      locationScore = 0;
     }
     score += locationScore;
 
@@ -138,7 +138,7 @@ console.log(`Candidate ${candidate._id} Analysis:
     }
 
     // Create Match specifically at Threshold >= 60%
-    if (score >= 60) {
+    if (score >= 70) {
       const lostId = report.type === "LOST" ? reportId : candidate._id;
       const foundId = report.type === "FOUND" ? reportId : candidate._id;
       const match = await Match.findOneAndUpdate(
@@ -176,7 +176,7 @@ console.log(`Candidate ${candidate._id} Analysis:
           category: 'MATCH',
           title: 'Potential Match Found!',
           message: `We found a potential match for your report: ${report.title} (Score: ${Math.round(score)}%). Review it now!`,
-          data: { reportId: report._id }
+          data: { reportId: candidate._id }
         });
         
         await sendNotification({
@@ -184,7 +184,7 @@ console.log(`Candidate ${candidate._id} Analysis:
           category: 'MATCH',
           title: 'Potential Match Proposed!',
           message: `A new report has been submitted that might match your item: ${candidate.title} (Score: ${Math.round(score)}%). Check it out!`,
-          data: { reportId: candidate._id }
+          data: { reportId: report._id }
         });
       } catch (notifErr) {
         console.error("Match Notification Output Error:", notifErr.message);
