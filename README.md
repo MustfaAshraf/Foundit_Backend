@@ -1,3 +1,8 @@
+# Foundit Platform Entity-Relationship Diagram (ERD)
+
+This diagram visualizes the MongoDB database schema for the Foundit project, including entities, their attributes, and relationships.
+
+```mermaid
 erDiagram
     USER ||--o{ REPORT : "creates"
     USER }o--o| COMMUNITY : "belongs to"
@@ -17,22 +22,31 @@ erDiagram
         String name
         String email
         String password "hashed"
-        String role "user/admin/super_admin"
+        String role "user/community_admin/super_admin"
         ObjectId community FK
         String plan "Free/Premium"
         Number credits
         Number trustScore
         Number activityScore
+        Number lastActivityRewardThreshold
+        Date lastDailyLogin
+        String status "active/banned"
+        String[] badges
+        Date lastChatDate
+        Number dailyChatPoints
         Boolean isVerified
-        String socialProvider
+        String socialProvider "google/email"
     }
 
     COMMUNITY {
         ObjectId _id PK
         String name
         String domain
-        String type
-        String status
+        String type "University/Compound/Company/Others"
+        String plan "FREE/PRO/ENTERPRISE"
+        String subscriptionStatus "active/inactive"
+        Number[] location_coordinates
+        Number radius
         ObjectId[] admins FK
     }
 
@@ -47,9 +61,9 @@ erDiagram
         String brand
         String[] tags
         String locationName
-        String[] images
+        Object[] images "url, publicId"
         Date dateHappened
-        String status
+        String status "OPEN/REJECTED/MATCHED/RESOLVED"
         Number completionPercent
         ObjectId user FK
         ObjectId community FK
@@ -59,8 +73,10 @@ erDiagram
         ObjectId _id PK
         ObjectId lostReport_report FK
         Boolean lostReport_isAccepted
+        Date lostReport_acceptedAt
         ObjectId foundReport_report FK
         Boolean foundReport_isAccepted
+        Date foundReport_acceptedAt
         Number distance
         Number score
         String status "PROPOSED/ACCEPTED/REJECTED/VERIFIED"
@@ -72,6 +88,8 @@ erDiagram
         ObjectId relatedReport FK
         String lastMessage
         Date lastMessageAt
+        Boolean isSupport
+        ObjectId assignedTo FK
         Boolean isActive
     }
 
@@ -87,7 +105,7 @@ erDiagram
     NOTIFICATION {
         ObjectId _id PK
         ObjectId recipient FK
-        String category
+        String category "MATCH/MESSAGE/ALERT/SYSTEM/SUPPORT"
         String title
         String message
         ObjectId data_reportId FK
@@ -103,5 +121,8 @@ erDiagram
         String type "CREDIT_REFILL/SUBSCRIPTION"
         Number creditsAdded
         String stripePaymentId
-        String status
+        String billingName
+        String billingEmail
+        String status "PENDING/SUCCESS/FAILED"
     }
+```
