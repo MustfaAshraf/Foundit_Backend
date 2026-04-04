@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "643f1a2b8f1a1a0012345677",
+    "name": "Mustafa Ashraf",
+    "email": "mustafa@test.com",
+    "password": "$2b$10$hashedpassword1",
+    "role": "user",
+    "community": "65a000000000000000000001",
+    "plan": "Free",
+    "credits": 3,
+    "trustScore": 50,
+    "activityScore": 20,
+    "status": "active"
+  },
+  {
+    "_id": "643f1a2b8f1a1a0012345676",
+    "name": "Finder User",
+    "email": "finder@test.com",
+    "password": "$2b$10$hashedpassword2",
+    "role": "user",
+    "community": "65a000000000000000000002",
+    "plan": "Premium",
+    "credits": 10,
+    "trustScore": 120,
+    "activityScore": 60,
+    "status": "active"
+  }
+]
