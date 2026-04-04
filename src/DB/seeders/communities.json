@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "65a000000000000000000001",
+    "name": "Cairo University",
+    "domain": "cu.edu.eg",
+    "type": "University",
+    "plan": "PRO",
+    "location": {
+      "type": "Point",
+      "coordinates": [31.2070, 30.0275]
+    },
+    "radius": 2000,
+    "subscriptionStatus": "active"
+  },
+  {
+    "_id": "65a000000000000000000002",
+    "name": "Nasr City Community",
+    "domain": "nasrcity.local",
+    "type": "Compound",
+    "plan": "PRO",
+    "location": {
+      "type": "Point",
+      "coordinates": [31.3000, 30.0600]
+    },
+    "radius": 1500,
+    "subscriptionStatus": "active"
+  }
+]
