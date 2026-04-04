@@ -53,11 +53,10 @@ export const config = {
         WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     },
 
-    // OAuth (Google)
     GOOGLE: {
         CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
         CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-        CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
+        REDIRECT_URL: process.env.GOOGLE_REDIRECT_URL,
     },
 
     // File Upload
@@ -76,7 +75,11 @@ export const config = {
     },
 
     // Frontend
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173', // Vite default is 5173, NOT 3000
+    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+    DASHBOARD_URL: process.env.DASHBOARD_URL || 'http://localhost:4000',
+
+    // Redis
+    REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
 
     // Pagination
     PAGINATION: {

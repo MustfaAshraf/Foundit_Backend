@@ -1,4 +1,4 @@
-import { User } from '../DB/models/User.model.js';
+import { User } from '../DB/models/user.model.js';
 import { verifyToken } from '../utils/jwt.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { createForbiddenError, createUnauthorizedError } from '../utils/appError.js';
@@ -29,6 +29,11 @@ export const protect = asyncHandler(async (req, res, next) => {
         if (decoded.iat < changedTimestamp) {
             return next(createUnauthorizedError('User recently changed password! Please log in again.'));
         }
+    }
+
+    // 5. Check if user is banned
+    if (currentUser.status === 'banned') {
+        return next(createForbiddenError('Your account has been banned. Please contact support.'));
     }
 
     // GRANT ACCESS TO PROTECTED ROUTE

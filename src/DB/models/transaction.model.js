@@ -1,38 +1,40 @@
 import mongoose from 'mongoose';
 
 const transactionSchema = new mongoose.Schema({
-    user: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', 
-        required: true 
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
-    amount: { 
-        type: Number, 
-        required: true 
+    amount: {
+        type: Number,
+        required: true
     },
-    currency: { 
-        type: String, 
-        default: 'EGP' 
+    currency: {
+        type: String,
+        default: 'EGP'
     },
-    
-    type: { 
-        type: String, 
-        enum: ['CREDIT_REFILL', 'SUBSCRIPTION'], 
-        required: true 
+
+    type: {
+        type: String,
+        enum: ['CREDIT_REFILL', 'SUBSCRIPTION'],
+        required: true
     },
-    creditsAdded: { 
-        type: Number, 
-        default: 0 
+    creditsAdded: {
+        type: Number,
+        default: 0
     },
-    
+
     stripePaymentId: String,
-    status: { 
-        type: String, 
-        enum: ['PENDING', 'SUCCESS', 'FAILED'], 
-        default: 'PENDING' 
+    billingName: String,
+    billingEmail: String,
+    status: {
+        type: String,
+        enum: ['PENDING', 'SUCCESS', 'FAILED'],
+        default: 'PENDING'
     }
-}, { 
-    timestamps: true 
+}, {
+    timestamps: true
 });
 
 export const Transaction = mongoose.model('Transaction', transactionSchema);

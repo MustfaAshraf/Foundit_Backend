@@ -9,9 +9,10 @@ const notificationSchema = new mongoose.Schema({
 
     category: {
         type: String,
-        enum: ['MATCH', 'MESSAGE', 'ALERT', 'SYSTEM'],
+        enum: ['MATCH', 'MESSAGE', 'ALERT', 'SYSTEM', 'SUPPORT'],
         required: true
     },
+
 
     title: String,
     message: String,
