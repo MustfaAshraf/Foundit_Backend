@@ -5,6 +5,8 @@ const dataMethods = ['body', 'params', 'query', 'headers'];
 
 export const validate = (schema) => {
     return (req, res, next) => {
+        console.log(`[Validation Debug] ${req.method} ${req.originalUrl}`);
+        console.log(`[Validation Debug] Body:`, JSON.stringify(req.body, null, 2));
         const validationErrors = [];
 
         dataMethods.forEach((key) => {
@@ -24,6 +26,7 @@ export const validate = (schema) => {
         });
 
         if (validationErrors.length > 0) {
+            console.log('Validation Errors:', validationErrors);
             // Stop the request here if validation fails
             return sendFailResponse(res, validationErrors, HTTP_STATUS.UNPROCESSABLE_ENTITY);
         }

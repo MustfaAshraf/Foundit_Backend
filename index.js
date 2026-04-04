@@ -1,20 +1,24 @@
 import dotenv from 'dotenv';
 import http from 'http';
 import express from 'express';
-import { initSocket } from './src/config/socket.js';
+import { initSocket } from './src/modules/chat/services/socket.js';
 import { dbConnection } from './src/DB/connection.js';
 import { bootstrap } from './src/app.js';
 import { config } from './src/config/env.js'; // Use your centralized config!
+import { connectRedis } from './src/config/redis.js';
 
 dotenv.config();
 
 const app = express();
 
 // Use port from your config file logic
-const port = config.PORT; 
+const port = config.PORT;
 
 // 1. Connect to DB
 dbConnection();
+
+// Connect to Redis
+connectRedis();
 
 // 2. Bootstrap App (Routes & Middlewares)
 bootstrap(app);
