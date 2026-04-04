@@ -1,45 +1,43 @@
 {
   "name": "backend_project",
   "version": "1.0.0",
-  "description": "",
+  "description": "Production-ready backend",
   "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
+    "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
-    "dns": "^0.2.2",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
+    "dotenv": "^17.0.0",
+    "express": "^4.21.2",
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.3.1",
     "google-auth-library": "^10.6.2",
-    "helmet": "^8.1.0",
-    "http": "^0.0.1-security",
-    "joi": "^18.0.2",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.2.4",
-    "morgan": "^1.10.1",
-    "multer": "^2.1.1",
-    "nodemailer": "^8.0.1",
-    "nodemon": "^3.1.14",
-    "redis": "^5.11.0",
-    "socket.io": "^4.8.3",
-    "stripe": "^20.4.0",
+    "helmet": "^7.0.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.3.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.0",
+    "nodemailer": "^6.9.0",
+    "redis": "^5.0.0",
+    "socket.io": "^4.7.0",
+    "stripe": "^20.0.0",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
-    "jest": "^30.3.0"
+    "jest": "^30.0.0",
+    "nodemon": "^3.0.0"
   }
 }
