@@ -28,7 +28,6 @@ const routerHandler = async (app, express) => {
   app.use("/api/v1/support", supportRouter);
   app.use("/api/v1/admin/broadcasts", broadcastsRouter);
   app.use("/api/v1/admin/dashboard", dashboardRouter);   
-    // app.use("/api/v1/users", userRouter)
 
   app.use("/{*any}", (req, res) => {
     res.status(404).json({ message: "this Router is not found" });
