@@ -5,13 +5,27 @@ import { globalErrorHandler } from './middlewares/error.middleware.js'; // 2. Im
 import cookieParser from 'cookie-parser';
 import routerHandler from './utils/routerHandler.js';
 import helmet from 'helmet';
-import mongoSanitize from 'express-mongo-sanitize';
 
 export const bootstrap = (app) => {
     // --- Global Middlewares ---
     // 1. CORS MUST BE FIRST! (Let's the browser know it's allowed to talk to us)
+    const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        process.env.DASHBOARD_URL,
+        process.env.RAILWAY_STATIC_URL // Railway auto domain (optional)
+    ].filter(Boolean); // remove undefined values
+
     app.use(cors({
-        origin: [process.env.FRONTEND_URL, process.env.DASHBOARD_URL],
+        origin: (origin, callback) => {
+            // allow requests with no origin (Postman, mobile apps, curl, etc.)
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            } else {
+                return callback(new Error('Not allowed by CORS'));
+            }
+        },
         credentials: true
     }));
 
