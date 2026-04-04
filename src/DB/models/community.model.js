@@ -21,8 +21,8 @@ const communitySchema = new mongoose.Schema({
     },
     plan: {
         type: String,
-        enum: ['FREE', 'PRO', 'ENTERPRISE'],
-        default: 'FREE'
+        enum: ['PRO', 'ENTERPRISE'],
+        default: 'PRO'
     },
     logo: String,
 
@@ -56,7 +56,6 @@ const communitySchema = new mongoose.Schema({
     timestamps: true
 });
 
-// إضافة Index للمكان عشان نعرف نعمل عمليات بحث جغرافية مستقبلاً
 communitySchema.index({ location: '2dsphere' });
 
 export const Community = mongoose.models.Community || mongoose.model('Community', communitySchema);
