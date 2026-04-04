@@ -32,7 +32,7 @@ export const createCheckoutSessionService = async (user, amount, plan, fullName,
         payment_method_types: ['card'],
         mode: 'payment',
         success_url: `${config.FRONTEND_URL}/profile?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${config.FRONTEND_URL}/payment/cancel`,
+        cancel_url: `${config.FRONTEND_URL}/payment/checkout`,
         client_reference_id: user._id.toString(),
         customer_email: user.email,
         line_items: [
