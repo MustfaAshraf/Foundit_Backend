@@ -11,6 +11,8 @@ export const bootstrap = (app) => {
     // 1. CORS MUST BE FIRST! (Let's the browser know it's allowed to talk to us)
     const allowedOrigins = [
         process.env.FRONTEND_URL,
+        "http://localhost:4000",
+        "http://localhost:5173",
         process.env.DASHBOARD_URL,
         process.env.RAILWAY_STATIC_URL, // Railway auto domain (optional),
     ].filter(Boolean); // remove undefined values
