@@ -75,8 +75,8 @@ export const config = {
     },
 
     // Frontend
-    FRONTEND_URL: 'http://localhost:5173',
-    DASHBOARD_URL: 'http://localhost:4000',
+    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+    DASHBOARD_URL: process.env.DASHBOARD_URL || 'http://localhost:4000',
 
     // Redis
     REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
