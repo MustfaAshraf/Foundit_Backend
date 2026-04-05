@@ -6,10 +6,11 @@ import { config } from '../../config/env.js';
 
 // --- Options for Cookies ---
 const cookieOptions = {
-    httpOnly: true, // Prevent XSS
-    secure: config.isProduction, // HTTPS only in prod
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    httpOnly: true,
+    secure: config.COOKIE.SECURE, // ✅ Correct: false in dev, true in prod
+    sameSite: config.COOKIE.SAME_SITE, // ✅ Correct: lax in dev (from .env)
+    path: '/', // ✅ NEW: Available on all routes
+    maxAge: config.COOKIE.EXPIRE * 24 * 60 * 60 * 1000 // ✅ Uses config value
 };
 
 export const register = asyncHandler(async (req, res) => {
