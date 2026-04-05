@@ -12,7 +12,9 @@ export const bootstrap = (app) => {
     const allowedOrigins = [
         process.env.FRONTEND_URL,
         process.env.DASHBOARD_URL,
-        process.env.RAILWAY_STATIC_URL // Railway auto domain (optional)
+        process.env.RAILWAY_STATIC_URL, // Railway auto domain (optional),
+        "http://localhost:4000",
+        "http://localhost:5173"
     ].filter(Boolean); // remove undefined values
 
     app.use(cors({
